@@ -32,13 +32,21 @@ public class Worker extends AbstractActor {
 	////////////////////
 	// Actor Messages //
 	////////////////////
-	
-	@Data @AllArgsConstructor @SuppressWarnings("unused")
+
+	@Data @SuppressWarnings("unused")
 	public static class WorkMessage implements Serializable {
 		private static final long serialVersionUID = -7643194361868862395L;
-		private WorkMessage() {}
-		private int[] x;
-		private int[] y;
+		public WorkMessage(type workType, Object payload) {
+			this.messageType = workType;
+			this.payload = payload;
+		}
+		public Object payload;
+		public enum type {PASSWORD_HASH}
+		public type messageType;
+
+		public type getMessageType() {
+			return messageType;
+		}
 	}
 
 	/////////////////
@@ -95,31 +103,15 @@ public class Worker extends AbstractActor {
 	}
 
 	private void handle(WorkMessage message) {
-		long y = 0;
-		for (int i = 0; i < 1000000; i++)
-			if (this.isPrime(i))
-				y = y + i;
 		
-		this.log.info("done: " + y);
+		this.log.info("work message received");
+
+		switch (message.getMessageType()) {
+			case PASSWORD_HASH:
+				this.log.info("Do a password hash" + message.payload.toString());
+				break;
+		}
 		
 		this.sender().tell(new CompletionMessage(CompletionMessage.status.EXTENDABLE), this.self());
-	}
-	
-	private boolean isPrime(long n) {
-		
-		// Check for the most basic primes
-		if (n == 1 || n == 2 || n == 3)
-			return true;
-
-		// Check if n is an even number
-		if (n % 2 == 0)
-			return false;
-
-		// Check the odds
-		for (long i = 3; i * i <= n; i += 2)
-			if (n % i == 0)
-				return false;
-		
-		return true;
 	}
 }
