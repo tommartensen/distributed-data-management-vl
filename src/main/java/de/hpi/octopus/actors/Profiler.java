@@ -23,9 +23,9 @@ public class Profiler extends AbstractActor {
 	
 	public static final String DEFAULT_NAME = "profiler";
 
+	private List<String> names = new ArrayList<>();
 	private List<String> passwordHashes = new ArrayList<>();
 	private List<String> sequencedGenes = new ArrayList<>();
-
 
 	public static Props props() {
 		return Props.create(Profiler.class);
@@ -44,7 +44,13 @@ public class Profiler extends AbstractActor {
 	public static class TaskMessage implements Serializable {
 		private static final long serialVersionUID = -8330958742629706627L;
 		private TaskMessage() {}
+		public int slaves;
 		public String filePath;
+	}
+
+	@Data @AllArgsConstructor @SuppressWarnings("unused")
+	public static class RegisterSlaveMessage implements Serializable {
+		private static final long serialVersionUID = -7472726661953028641L;
 	}
 
 	@Data @AllArgsConstructor @SuppressWarnings("unused")
@@ -109,10 +115,13 @@ public class Profiler extends AbstractActor {
 	private final Map<ActorRef, Worker.WorkMessage> busyWorkers = new HashMap<>();
 
 	private TaskMessage task;
+	private int numberSlaves = 0;
+	private int desiredNumberSlaves;
 	private boolean areDonePrefixes = false;
 	private boolean areDonePartners = false;
 	private boolean isStartedHashing = false;
 	private boolean doneWithAllTasks = false;
+	private String filePath;
 
 	/////////////
     // Results //
@@ -121,6 +130,7 @@ public class Profiler extends AbstractActor {
 	private List<Integer> prefixes;
     private Map<Integer, Integer> partners = new HashMap<>();
     private Map<Integer, String> partnerHashes = new HashMap<>();
+    long startTime;
 
 	////////////////////
 	// Actor Behavior //
@@ -132,6 +142,7 @@ public class Profiler extends AbstractActor {
 				.match(RegistrationMessage.class, this::handle)
 				.match(Terminated.class, this::handle)
 				.match(TaskMessage.class, this::handle)
+				.match(RegisterSlaveMessage.class, this::handle)
 				.match(PasswordCompletionMessage.class, this::handle)
 				.match(PrefixCompletionMessage.class, this::handle)
                 .match(PartnerCompletionMessage.class, this::handle)
@@ -145,6 +156,13 @@ public class Profiler extends AbstractActor {
 		
 		this.assign(this.sender());
 		this.log.info("Registered {}", this.sender());
+	}
+
+	private void handle(RegisterSlaveMessage message) {
+		this.numberSlaves++;
+		if (this.numberSlaves == this.desiredNumberSlaves) {
+			kickOff();
+		}
 	}
 	
 	private void handle(Terminated message) {
@@ -162,16 +180,12 @@ public class Profiler extends AbstractActor {
 	private void handle(TaskMessage message) {
 		if (this.task != null)
 			this.log.error("The profiler actor can process only one task in its current implementation!");
-		
+
+		this.desiredNumberSlaves = message.slaves;
+		this.filePath = message.filePath;
 		this.task = message;
-
-
-		// TODO: make file location configurable
-		loadFile(message.filePath);
-
-		for (int i = 0; i < 42; i++) {
-			this.assign(new Worker.PasswordMessage(i, passwordHashes.get(i)));
-			this.assign(new Worker.PartnerMessage(i, sequencedGenes));
+		if (this.desiredNumberSlaves == 0) {
+			kickOff();
 		}
 	}
 	
@@ -255,10 +269,12 @@ public class Profiler extends AbstractActor {
             this.idleWorkers.add(worker);
             if (!this.doneWithAllTasks) {
                 this.doneWithAllTasks = true;
-                this.log.info("Cracked passwords: " + this.crackedPasswords);
-                this.log.info("Partners: " + this.partners);
-                this.log.info("Prefixes: " + this.prefixes);
-                this.log.info("Hashes: " + this.partnerHashes);
+                long endTime = System.currentTimeMillis();
+                this.log.info("ID,Name,Password,Prefix,Partner,Hash");
+                for (int i = 0; i < 42; i++) {
+                    this.log.info((i + 1) + "," + this.names.get(i) + "," + this.crackedPasswords.get(i) + "," + this.prefixes.get(i) + "," + this.partners.get(i) + "," + this.partnerHashes.get(i));
+                }
+                this.log.info("Calculation Time: " + (endTime - this.startTime));
                 this.log.info("STOP SYSTEM!");
             }
         }
@@ -288,6 +304,18 @@ public class Profiler extends AbstractActor {
 		worker.tell(work, this.self());
 	}
 
+    private void kickOff() {
+        startTime = System.currentTimeMillis();
+        this.log.info("Start processing");
+
+        loadFile(this.filePath);
+
+        for (int i = 0; i < 42; i++) {
+            this.assign(new Worker.PasswordMessage(i, passwordHashes.get(i)));
+            this.assign(new Worker.PartnerMessage(i, sequencedGenes));
+        }
+    }
+
 	private void startPrefixes() {
         int shardCount = this.busyWorkers.size() + this.idleWorkers.size();
         long maxValue = (long) Math.pow((double) 2, (double) 42);
@@ -314,6 +342,7 @@ public class Profiler extends AbstractActor {
 			while ((line = br.readLine()) != null) {
 				if (!line.equals("")) {
 					String[] parts = line.split(cvsSplitBy);
+					this.names.add(parts[1]);
 					this.passwordHashes.add(parts[2]);
 					this.sequencedGenes.add(parts[3]);
 				}

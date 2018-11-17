@@ -31,10 +31,10 @@ public class OctopusApp {
 
             switch (jCommander.getParsedCommand()) {
                 case OctopusMaster.MASTER_ROLE:
-                    OctopusMaster.start(ACTOR_SYSTEM_NAME, masterCommand.workers, masterCommand.host, masterCommand.port);
+                    OctopusMaster.start(ACTOR_SYSTEM_NAME, masterCommand.host, masterCommand.port, masterCommand.workers, masterCommand.slaves, masterCommand.filePath);
                     break;
                 case OctopusSlave.SLAVE_ROLE:
-                    OctopusSlave.start(ACTOR_SYSTEM_NAME, slaveCommand.workers, slaveCommand.host, slaveCommand.port, slaveCommand.masterhost, slaveCommand.masterport);
+                    OctopusSlave.start(ACTOR_SYSTEM_NAME, slaveCommand.workers, slaveCommand.host, slaveCommand.port, slaveCommand.masterHost, slaveCommand.masterPort);
                     break;
                 default:
                     throw new AssertionError();
@@ -57,18 +57,17 @@ public class OctopusApp {
     	public static final int DEFAULT_SLAVE_PORT = 7879;
         public static final int DEFAULT_WORKERS = 4;
     	
-    	@Parameter(names = {"-h", "--host"}, description = "this machine's host name or IP to bind against")
-        String host = this.getDefaultHost();
-
-        String getDefaultHost() {
+    	String getDefaultHost() {
             try {
                 return InetAddress.getLocalHost().getHostAddress();
             } catch (UnknownHostException e) {
                 return "localhost";
             }
         }
-    	
-        @Parameter(names = {"-p", "--port"}, description = "port to bind against", required = false)
+
+        String host = this.getDefaultHost();
+
+    	@Parameter(names = {"-p", "--port"}, description = "port to start system on", required = false)
         int port = this.getDefaultPort();
 
         abstract int getDefaultPort();
@@ -79,6 +78,13 @@ public class OctopusApp {
 
     @Parameters(commandDescription = "start a master actor system")
     static class MasterCommand extends CommandBase {
+	    public static final int DEFAULT_SLAVES = 4;
+
+        @Parameter(names = {"--slaves"}, description = "number of slaves to wait for", required = false)
+        int slaves = DEFAULT_SLAVES;
+
+        @Parameter(names = {"--input"}, description = "location of input file", required = false)
+        String filePath;
 
         @Override
         int getDefaultPort() {
@@ -93,11 +99,12 @@ public class OctopusApp {
         int getDefaultPort() {
             return DEFAULT_SLAVE_PORT;
         }
-        
-        @Parameter(names = {"-mp", "--masterport"}, description = "port of the master", required = false)
-        int masterport = DEFAULT_MASTER_PORT;
 
-        @Parameter(names = {"-mh", "--masterhost"}, description = "host name or IP of the master", required = true)
-        String masterhost;
+        String host = this.getDefaultHost();
+        
+        int masterPort = DEFAULT_MASTER_PORT;
+
+        @Parameter(names = {"-h", "--host"}, description = "this machine's host name or IP to bind against", required = true)
+        String masterHost;
     }
 }

@@ -1,16 +1,18 @@
 package de.hpi.octopus;
 
+import akka.actor.ActorRef;
 import com.typesafe.config.Config;
 
 import akka.actor.ActorSystem;
 import akka.cluster.Cluster;
+import de.hpi.octopus.actors.Profiler;
 import de.hpi.octopus.actors.Worker;
 
 
 public class OctopusSlave extends OctopusSystem {
 
 	public static final String SLAVE_ROLE = "slave";
-	
+
 	public static void start(String actorSystemName, int workers, String host, int port, String masterhost, int masterport) {
 		
 		final Config config = createConfiguration(actorSystemName, SLAVE_ROLE, host, port, masterhost, masterport);

@@ -134,7 +134,7 @@ public class Worker extends AbstractActor {
     }
 
     private void handle(PasswordMessage message) {
-        this.log.info("I am " + this.self().path() + " and do password finding for" + message.id);
+        this.log.debug("I am " + this.self().path() + " and do password finding for" + message.id);
         try {
             int password = Solver.unHash(message.hash);
             this.sender().tell(new Profiler.PasswordCompletionMessage(Profiler.PasswordCompletionMessage.status.DONE, message.id, password), this.self());
@@ -144,7 +144,7 @@ public class Worker extends AbstractActor {
     }
 
     private void handle(PrefixMessage message) {
-        this.log.info("I am " + this.self().path() + " and do prefix finding for [" + message.start + ", " + message.end + "]");
+        this.log.debug("I am " + this.self().path() + " and do prefix finding for [" + message.start + ", " + message.end + "]");
         List<Integer> passwords = new ArrayList<>();
         for (int i = 0; i < message.passwords.size(); i++)
             passwords.add(message.passwords.get(i));
@@ -157,14 +157,15 @@ public class Worker extends AbstractActor {
     }
 
     private void handle(PartnerMessage message) {
+        this.log.debug("I am " + this.self().path() + " and do partner finding for " + message.id);
+
         // add one since we start counting at 1 :(
-        this.log.info("I am " + this.self().path() + " and do partner finding for " + message.id);
         int partner = Solver.longestOverlapPartner(message.id, message.sequences) + 1;
         this.sender().tell(new Profiler.PartnerCompletionMessage(Profiler.PartnerCompletionMessage.status.DONE, message.id, partner), this.self());
     }
 
     private void handle(HashMiningMessage message) {
-        this.log.info("I am " + this.self().path() + " and do hash mining for " + message.id);
+        this.log.debug("I am " + this.self().path() + " and do hash mining for " + message.id);
         String hash = Solver.findHash(message.partner, message.prefix);
         this.sender().tell(new Profiler.HashMiningCompletionMessage(Profiler.HashMiningCompletionMessage.status.DONE, message.id, hash), this.self());
     }
