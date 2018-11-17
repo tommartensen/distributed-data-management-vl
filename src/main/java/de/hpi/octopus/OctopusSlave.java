@@ -5,7 +5,7 @@ import com.typesafe.config.Config;
 import akka.actor.ActorSystem;
 import akka.cluster.Cluster;
 import de.hpi.octopus.actors.Worker;
-import de.hpi.octopus.actors.listeners.MetricsListener;
+
 
 public class OctopusSlave extends OctopusSystem {
 
@@ -20,9 +20,6 @@ public class OctopusSlave extends OctopusSystem {
 		Cluster.get(system).registerOnMemberUp(new Runnable() {
 			@Override
 			public void run() {
-				//system.actorOf(ClusterListener.props(), ClusterListener.DEFAULT_NAME);
-				system.actorOf(MetricsListener.props(), MetricsListener.DEFAULT_NAME);
-
 				for (int i = 0; i < workers; i++)
 					system.actorOf(Worker.props(), Worker.DEFAULT_NAME + i);
 			}

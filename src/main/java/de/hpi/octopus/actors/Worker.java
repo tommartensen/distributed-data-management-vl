@@ -1,6 +1,9 @@
 package de.hpi.octopus.actors;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 import akka.actor.AbstractActor;
 import akka.actor.Props;
@@ -12,114 +15,157 @@ import akka.cluster.MemberStatus;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import de.hpi.octopus.OctopusMaster;
-import de.hpi.octopus.actors.Profiler.CompletionMessage;
 import de.hpi.octopus.actors.Profiler.RegistrationMessage;
+import de.hpi.octopus.util.Solver;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
 public class Worker extends AbstractActor {
 
-	////////////////////////
-	// Actor Construction //
-	////////////////////////
-	
-	public static final String DEFAULT_NAME = "worker";
+    ////////////////////////
+    // Actor Construction //
+    ////////////////////////
 
-	public static Props props() {
-		return Props.create(Worker.class);
-	}
+    public static final String DEFAULT_NAME = "worker";
 
-	////////////////////
-	// Actor Messages //
-	////////////////////
-	
-	@Data @AllArgsConstructor @SuppressWarnings("unused")
-	public static class WorkMessage implements Serializable {
-		private static final long serialVersionUID = -7643194361868862395L;
-		private WorkMessage() {}
-		private int[] x;
-		private int[] y;
-	}
+    public static Props props() {
+        return Props.create(Worker.class);
+    }
 
-	/////////////////
-	// Actor State //
-	/////////////////
-	
-	private final LoggingAdapter log = Logging.getLogger(this.context().system(), this);
-	private final Cluster cluster = Cluster.get(this.context().system());
+    ////////////////////
+    // Actor Messages //
+    ////////////////////
 
-	/////////////////////
-	// Actor Lifecycle //
-	/////////////////////
-	
-	@Override
-	public void preStart() {
-		this.cluster.subscribe(this.self(), MemberUp.class);
-	}
 
-	@Override
-	public void postStop() {
-		this.cluster.unsubscribe(this.self());
-	}
+    @Data @SuppressWarnings("unused")
+    public abstract static class WorkMessage implements Serializable {
+        public static final long serialVersionUID = 7741343650855817071L;
+        private WorkMessage() {}
+    }
 
-	////////////////////
-	// Actor Behavior //
-	////////////////////
-	
-	@Override
-	public Receive createReceive() {
-		return receiveBuilder()
-				.match(CurrentClusterState.class, this::handle)
-				.match(MemberUp.class, this::handle)
-				.match(WorkMessage.class, this::handle)
-				.matchAny(object -> this.log.info("Received unknown message: \"{}\"", object.toString()))
-				.build();
-	}
+    @Data @AllArgsConstructor @SuppressWarnings("unused")
+    public static class PasswordMessage extends WorkMessage implements Serializable {
+        private static final long serialVersionUID = 651145820504746184L;
+        private PasswordMessage() {}
+        public int id;
+        public String hash;
+    }
 
-	private void handle(CurrentClusterState message) {
-		message.getMembers().forEach(member -> {
-			if (member.status().equals(MemberStatus.up()))
-				this.register(member);
-		});
-	}
+    @Data @AllArgsConstructor @SuppressWarnings("unused")
+    public static class PrefixMessage extends WorkMessage implements Serializable {
+        private static final long serialVersionUID = 1746256255673692918L;
+        private PrefixMessage() {}
+        public long start;
+        public long end;
+        public Map<Integer, Integer> passwords;
+    }
 
-	private void handle(MemberUp message) {
-		this.register(message.member());
-	}
+    @Data @AllArgsConstructor @SuppressWarnings("unused")
+    public static class PartnerMessage extends WorkMessage  implements Serializable {
+        private static final long serialVersionUID = -2148611780905300325L;
+        private PartnerMessage() {}
+        public int id;
+        public List<String> sequences;
+    }
 
-	private void register(Member member) {
-		if (member.hasRole(OctopusMaster.MASTER_ROLE))
-			this.getContext()
-				.actorSelection(member.address() + "/user/" + Profiler.DEFAULT_NAME)
-				.tell(new RegistrationMessage(), this.self());
-	}
+    @Data @AllArgsConstructor @SuppressWarnings("unused")
+    public static class HashMiningMessage extends WorkMessage  implements Serializable {
+        private static final long serialVersionUID = -7850632418688845902L;
+        private HashMiningMessage() {}
+        public int id;
+        public int partner;
+        public int prefix;
+    }
 
-	private void handle(WorkMessage message) {
-		long y = 0;
-		for (int i = 0; i < 1000000; i++)
-			if (this.isPrime(i))
-				y = y + i;
-		
-		this.log.info("done: " + y);
-		
-		this.sender().tell(new CompletionMessage(CompletionMessage.status.EXTENDABLE), this.self());
-	}
-	
-	private boolean isPrime(long n) {
-		
-		// Check for the most basic primes
-		if (n == 1 || n == 2 || n == 3)
-			return true;
+    /////////////////
+    // Actor State //
+    /////////////////
 
-		// Check if n is an even number
-		if (n % 2 == 0)
-			return false;
+    private final LoggingAdapter log = Logging.getLogger(this.context().system(), this);
+    private final Cluster cluster = Cluster.get(this.context().system());
 
-		// Check the odds
-		for (long i = 3; i * i <= n; i += 2)
-			if (n % i == 0)
-				return false;
-		
-		return true;
-	}
+    /////////////////////
+    // Actor Lifecycle //
+    /////////////////////
+
+    @Override
+    public void preStart() {
+        this.cluster.subscribe(this.self(), MemberUp.class);
+    }
+
+    @Override
+    public void postStop() {
+        this.cluster.unsubscribe(this.self());
+    }
+
+    ////////////////////
+    // Actor Behavior //
+    ////////////////////
+
+    @Override
+    public Receive createReceive() {
+        return receiveBuilder()
+                .match(CurrentClusterState.class, this::handle)
+                .match(MemberUp.class, this::handle)
+                .match(PasswordMessage.class, this::handle)
+                .match(PrefixMessage.class, this::handle)
+                .match(PartnerMessage.class, this::handle)
+                .match(HashMiningMessage.class, this::handle)
+                .matchAny(object -> this.log.info("Received unknown message: \"{}\"", object.toString()))
+                .build();
+    }
+
+    private void handle(CurrentClusterState message) {
+        message.getMembers().forEach(member -> {
+            if (member.status().equals(MemberStatus.up()))
+                this.register(member);
+        });
+    }
+
+    private void handle(MemberUp message) {
+        this.register(message.member());
+    }
+
+    private void register(Member member) {
+        if (member.hasRole(OctopusMaster.MASTER_ROLE))
+            this.getContext()
+                    .actorSelection(member.address() + "/user/" + Profiler.DEFAULT_NAME)
+                    .tell(new RegistrationMessage(), this.self());
+    }
+
+    private void handle(PasswordMessage message) {
+        this.log.info("I am " + this.self().path() + " and do password finding for" + message.id);
+        try {
+            int password = Solver.unHash(message.hash);
+            this.sender().tell(new Profiler.PasswordCompletionMessage(Profiler.PasswordCompletionMessage.status.DONE, message.id, password), this.self());
+        } catch (RuntimeException e) {
+            this.sender().tell(new Profiler.PasswordCompletionMessage(Profiler.PasswordCompletionMessage.status.FAILED), this.self());
+        }
+    }
+
+    private void handle(PrefixMessage message) {
+        this.log.info("I am " + this.self().path() + " and do prefix finding for [" + message.start + ", " + message.end + "]");
+        List<Integer> passwords = new ArrayList<>();
+        for (int i = 0; i < message.passwords.size(); i++)
+            passwords.add(message.passwords.get(i));
+        try {
+            List<Integer> prefixes = Solver.solve(message.start, message.end, passwords);
+            this.sender().tell(new Profiler.PrefixCompletionMessage(Profiler.PrefixCompletionMessage.status.DONE, prefixes), this.self());
+        } catch (RuntimeException e) {
+            this.sender().tell(new Profiler.PrefixCompletionMessage(Profiler.PrefixCompletionMessage.status.FAILED), this.self());
+        }
+    }
+
+    private void handle(PartnerMessage message) {
+        // add one since we start counting at 1 :(
+        this.log.info("I am " + this.self().path() + " and do partner finding for " + message.id);
+        int partner = Solver.longestOverlapPartner(message.id, message.sequences) + 1;
+        this.sender().tell(new Profiler.PartnerCompletionMessage(Profiler.PartnerCompletionMessage.status.DONE, message.id, partner), this.self());
+    }
+
+    private void handle(HashMiningMessage message) {
+        this.log.info("I am " + this.self().path() + " and do hash mining for " + message.id);
+        String hash = Solver.findHash(message.partner, message.prefix);
+        this.sender().tell(new Profiler.HashMiningCompletionMessage(Profiler.HashMiningCompletionMessage.status.DONE, message.id, hash), this.self());
+    }
 }

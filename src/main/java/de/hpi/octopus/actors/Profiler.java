@@ -1,11 +1,10 @@
 package de.hpi.octopus.actors;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
 import java.io.Serializable;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.Map;
-import java.util.Queue;
+import java.util.*;
 
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
@@ -13,7 +12,6 @@ import akka.actor.Props;
 import akka.actor.Terminated;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
-import de.hpi.octopus.actors.Worker.WorkMessage;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
@@ -24,6 +22,10 @@ public class Profiler extends AbstractActor {
 	////////////////////////
 	
 	public static final String DEFAULT_NAME = "profiler";
+
+	private List<String> passwordHashes = new ArrayList<>();
+	private List<String> sequencedGenes = new ArrayList<>();
+
 
 	public static Props props() {
 		return Props.create(Profiler.class);
@@ -42,16 +44,59 @@ public class Profiler extends AbstractActor {
 	public static class TaskMessage implements Serializable {
 		private static final long serialVersionUID = -8330958742629706627L;
 		private TaskMessage() {}
-		private int attributes;
+		public String filePath;
 	}
-	
+
 	@Data @AllArgsConstructor @SuppressWarnings("unused")
-	public static class CompletionMessage implements Serializable {
+	public static class PasswordCompletionMessage implements Serializable {
 		private static final long serialVersionUID = -6823011111281387872L;
-		public enum status {MINIMAL, EXTENDABLE, FALSE, FAILED}
-		private CompletionMessage() {}
-		private status result;
+		public enum status {DONE, FAILED}
+		private PasswordCompletionMessage() {}
+		public PasswordCompletionMessage(status result) {
+			this.result = result;
+		}
+		public status result;
+		public int id;
+		public int password;
 	}
+
+	@Data @AllArgsConstructor @SuppressWarnings("unused")
+	public static class PrefixCompletionMessage implements Serializable {
+		private static final long serialVersionUID = 5933119973166777442L;
+		public enum status {DONE, FAILED}
+		private PrefixCompletionMessage() {}
+		public PrefixCompletionMessage(status result) {
+			this.result = result;
+		}
+		public status result;
+		public List<Integer> prefixes;
+	}
+
+    @Data @AllArgsConstructor @SuppressWarnings("unused")
+    public static class PartnerCompletionMessage implements Serializable {
+        private static final long serialVersionUID = 8423520414177733108L;
+        public enum status {DONE, FAILED}
+        private PartnerCompletionMessage() {}
+        public PartnerCompletionMessage(status result) {
+            this.result = result;
+        }
+        public status result;
+        public int id;
+        public int partner;
+    }
+
+    @Data @AllArgsConstructor @SuppressWarnings("unused")
+    public static class HashMiningCompletionMessage implements Serializable {
+        private static final long serialVersionUID = 6969909201709811241L;
+        public enum status {DONE, FAILED}
+        private HashMiningCompletionMessage() {}
+        public HashMiningCompletionMessage(status result) {
+            this.result = result;
+        }
+        public status result;
+        public int id;
+        public String hash;
+    }
 	
 	/////////////////
 	// Actor State //
@@ -59,11 +104,23 @@ public class Profiler extends AbstractActor {
 	
 	private final LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 
-	private final Queue<WorkMessage> unassignedWork = new LinkedList<>();
+	private final Queue<Worker.WorkMessage> unassignedWork = new LinkedList<>();
 	private final Queue<ActorRef> idleWorkers = new LinkedList<>();
-	private final Map<ActorRef, WorkMessage> busyWorkers = new HashMap<>();
+	private final Map<ActorRef, Worker.WorkMessage> busyWorkers = new HashMap<>();
 
 	private TaskMessage task;
+	private boolean areDonePrefixes = false;
+	private boolean areDonePartners = false;
+	private boolean isStartedHashing = false;
+	private boolean doneWithAllTasks = false;
+
+	/////////////
+    // Results //
+    /////////////
+	private Map<Integer, Integer> crackedPasswords = new HashMap<>();
+	private List<Integer> prefixes;
+    private Map<Integer, Integer> partners = new HashMap<>();
+    private Map<Integer, String> partnerHashes = new HashMap<>();
 
 	////////////////////
 	// Actor Behavior //
@@ -75,12 +132,15 @@ public class Profiler extends AbstractActor {
 				.match(RegistrationMessage.class, this::handle)
 				.match(Terminated.class, this::handle)
 				.match(TaskMessage.class, this::handle)
-				.match(CompletionMessage.class, this::handle)
-				.matchAny(object -> this.log.info("Received unknown message: \"{}\"", object.toString()))
+				.match(PasswordCompletionMessage.class, this::handle)
+				.match(PrefixCompletionMessage.class, this::handle)
+                .match(PartnerCompletionMessage.class, this::handle)
+                .match(HashMiningCompletionMessage.class, this::handle)
+                .matchAny(object -> this.log.info("Received unknown message: \"{}\"", object.toString()))
 				.build();
 	}
 
-	private void handle(RegistrationMessage message) {
+    private void handle(RegistrationMessage message) {
 		this.context().watch(this.sender());
 		
 		this.assign(this.sender());
@@ -91,7 +151,7 @@ public class Profiler extends AbstractActor {
 		this.context().unwatch(message.getActor());
 		
 		if (!this.idleWorkers.remove(message.getActor())) {
-			WorkMessage work = this.busyWorkers.remove(message.getActor());
+			Worker.WorkMessage work = this.busyWorkers.remove(message.getActor());
 			if (work != null) {
 				this.assign(work);
 			}
@@ -104,35 +164,108 @@ public class Profiler extends AbstractActor {
 			this.log.error("The profiler actor can process only one task in its current implementation!");
 		
 		this.task = message;
-		this.assign(new WorkMessage(new int[0], new int[0]));
+
+
+		// TODO: make file location configurable
+		loadFile(message.filePath);
+
+		for (int i = 0; i < 42; i++) {
+			this.assign(new Worker.PasswordMessage(i, passwordHashes.get(i)));
+			this.assign(new Worker.PartnerMessage(i, sequencedGenes));
+		}
 	}
 	
-	private void handle(CompletionMessage message) {
+	private void handle(PasswordCompletionMessage message) {
 		ActorRef worker = this.sender();
-		WorkMessage work = this.busyWorkers.remove(worker);
+		Worker.WorkMessage work = this.busyWorkers.remove(worker);
 
-		this.log.info("Completed: [{},{}]", Arrays.toString(work.getX()), Arrays.toString(work.getY()));
-		
-		switch (message.getResult()) {
-			case MINIMAL: 
-				this.report(work);
-				break;
-			case EXTENDABLE:
-				this.split(work);
-				break;
-			case FALSE:
-				// Ignore
+		switch (message.result) {
+			case DONE:
+				this.crackedPasswords.put(message.id, message.password);
 				break;
 			case FAILED:
 				this.assign(work);
 				break;
 		}
-		
-		this.assign(worker);
+		if (this.crackedPasswords.size() < 42) {
+            this.assign(worker);
+        } else {
+		    this.idleWorkers.add(worker);
+            this.startPrefixes();
+        }
 	}
-	
-	private void assign(WorkMessage work) {
-		ActorRef worker = this.idleWorkers.poll();
+
+	private void handle(PrefixCompletionMessage message) {
+		ActorRef worker = this.sender();
+		this.busyWorkers.remove(worker);
+
+		switch (message.result) {
+			case DONE:
+			    if (!this.areDonePrefixes) {
+                    this.areDonePrefixes = true;
+                    this.idleWorkers.add(worker);
+                    this.prefixes = message.prefixes;
+                    if (this.areDonePartners && !this.isStartedHashing) {
+                        this.startHashing();
+                    }
+                }
+                this.assign(worker);
+				break;
+			case FAILED:
+                this.assign(worker);
+				break;
+		}
+	}
+
+	private void handle(PartnerCompletionMessage message) {
+        ActorRef worker = this.sender();
+        this.busyWorkers.remove(worker);
+
+        switch (message.result) {
+            case DONE:
+                this.partners.put(message.id, message.partner);
+                break;
+        }
+
+        if (this.partners.size() < 42) {
+            this.assign(worker);
+        } else {
+            this.areDonePartners = true;
+            if (this.areDonePrefixes && !this.isStartedHashing) {
+                this.idleWorkers.add(worker);
+                this.startHashing();
+            } else {
+                this.assign(worker);
+            }
+        }
+    }
+
+    private void handle(HashMiningCompletionMessage message) {
+        ActorRef worker = this.sender();
+        this.busyWorkers.remove(worker);
+
+        switch (message.result) {
+            case DONE:
+                this.partnerHashes.put(message.id, message.hash);
+                break;
+        }
+        if (this.partnerHashes.size() < 42) {
+            this.assign(worker);
+        } else {
+            this.idleWorkers.add(worker);
+            if (!this.doneWithAllTasks) {
+                this.doneWithAllTasks = true;
+                this.log.info("Cracked passwords: " + this.crackedPasswords);
+                this.log.info("Partners: " + this.partners);
+                this.log.info("Prefixes: " + this.prefixes);
+                this.log.info("Hashes: " + this.partnerHashes);
+                this.log.info("STOP SYSTEM!");
+            }
+        }
+    }
+
+	private void assign(Worker.WorkMessage work) {
+	    ActorRef worker = this.idleWorkers.poll();
 		
 		if (worker == null) {
 			this.unassignedWork.add(work);
@@ -144,7 +277,7 @@ public class Profiler extends AbstractActor {
 	}
 	
 	private void assign(ActorRef worker) {
-		WorkMessage work = this.unassignedWork.poll();
+		Worker.WorkMessage work = this.unassignedWork.poll();
 		
 		if (work == null) {
 			this.idleWorkers.add(worker);
@@ -154,25 +287,39 @@ public class Profiler extends AbstractActor {
 		this.busyWorkers.put(worker, work);
 		worker.tell(work, this.self());
 	}
-	
-	private void report(WorkMessage work) {
-		this.log.info("UCC: {}", Arrays.toString(work.getX()));
-	}
 
-	private void split(WorkMessage work) {
-		int[] x = work.getX();
-		int[] y = work.getY();
-		
-		int next = x.length + y.length;
-		
-		if (next < this.task.getAttributes() - 1) {
-			int[] xNew = Arrays.copyOf(x, x.length + 1);
-			xNew[x.length] = next;
-			this.assign(new WorkMessage(xNew, y));
-			
-			int[] yNew = Arrays.copyOf(y, y.length + 1);
-			yNew[y.length] = next;
-			this.assign(new WorkMessage(x, yNew));
+	private void startPrefixes() {
+        int shardCount = this.busyWorkers.size() + this.idleWorkers.size();
+        long maxValue = (long) Math.pow((double) 2, (double) 42);
+        long shardSize = maxValue / shardCount;
+        for (int i = 0; i < shardCount; i++) {
+           long end = (i + 1) * shardSize;
+           this.assign(new Worker.PrefixMessage(i*shardSize, end, this.crackedPasswords));
+        }
+    }
+
+    private void startHashing() {
+        this.isStartedHashing = true;
+        for (int i = 0; i < 42; i++) {
+            this.assign(new Worker.HashMiningMessage(i, partners.get(i), prefixes.get(i)));
+        }
+    }
+
+	private void loadFile(String filePath) {
+		String line = "";
+		String cvsSplitBy = ";";
+
+		try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
+			br.readLine();
+			while ((line = br.readLine()) != null) {
+				if (!line.equals("")) {
+					String[] parts = line.split(cvsSplitBy);
+					this.passwordHashes.add(parts[2]);
+					this.sequencedGenes.add(parts[3]);
+				}
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 	}
 }
