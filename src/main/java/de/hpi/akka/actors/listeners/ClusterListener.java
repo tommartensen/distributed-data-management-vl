@@ -1,4 +1,4 @@
-package de.hpi.octopus.actors.listeners;
+package de.hpi.akka.actors.listeners;
 
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
@@ -11,7 +11,7 @@ import akka.cluster.ClusterEvent.MemberRemoved;
 import akka.cluster.ClusterEvent.UnreachableMember;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
-import de.hpi.octopus.actors.Master;
+import de.hpi.akka.actors.Master;
 
 public class ClusterListener extends AbstractActor {
 

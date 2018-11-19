@@ -1,11 +1,11 @@
-package de.hpi.octopus;
+package de.hpi.akka;
 
 import com.typesafe.config.Config;
 
 import akka.actor.ActorSystem;
 import akka.cluster.Cluster;
-import de.hpi.octopus.actors.Reaper;
-import de.hpi.octopus.actors.Worker;
+import de.hpi.akka.actors.Reaper;
+import de.hpi.akka.actors.Worker;
 
 
 public class AkkaSlaveSystem extends AkkaBaseSystem {

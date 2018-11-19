@@ -1,4 +1,4 @@
-package de.hpi.octopus;
+package de.hpi.akka;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;

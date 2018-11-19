@@ -1,4 +1,4 @@
-package de.hpi.octopus.actors;
+package de.hpi.akka.actors;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -23,6 +23,7 @@ public class Master extends AbstractActor {
 	private List<String> names = new ArrayList<>();
 	private List<String> passwordHashes = new ArrayList<>();
 	private List<String> sequencedGenes = new ArrayList<>();
+	private int numberStudents;
 
 	public static Props props() {
 		return Props.create(Master.class);
@@ -198,7 +199,7 @@ public class Master extends AbstractActor {
 				this.assign(work);
 				break;
 		}
-		if (this.crackedPasswords.size() < 42) {
+		if (this.crackedPasswords.size() < this.numberStudents) {
             this.assign(worker);
         } else {
 		    this.idleWorkers.add(worker);
@@ -238,7 +239,7 @@ public class Master extends AbstractActor {
                 break;
         }
 
-        if (this.partners.size() < 42) {
+        if (this.partners.size() < this.numberStudents) {
             this.assign(worker);
         } else {
             this.areDonePartners = true;
@@ -260,7 +261,7 @@ public class Master extends AbstractActor {
                 this.partnerHashes.put(message.id, message.hash);
                 break;
         }
-        if (this.partnerHashes.size() < 42) {
+        if (this.partnerHashes.size() < this.numberStudents) {
             this.assign(worker);
         } else {
             this.idleWorkers.add(worker);
@@ -268,7 +269,7 @@ public class Master extends AbstractActor {
                 this.doneWithAllTasks = true;
                 long endTime = System.currentTimeMillis();
                 this.log.info("ID,Name,Password,Prefix,Partner,Hash");
-                for (int i = 0; i < 42; i++) {
+                for (int i = 0; i < this.numberStudents; i++) {
                     this.log.info((i + 1) + "," + this.names.get(i) + "," + this.crackedPasswords.get(i) + "," + this.prefixes.get(i) + "," + this.partners.get(i) + "," + this.partnerHashes.get(i));
                 }
                 this.log.info("Calculation Time: " + (endTime - this.startTime));
@@ -320,7 +321,9 @@ public class Master extends AbstractActor {
 
         loadFile(this.filePath);
 
-        for (int i = 0; i < 42; i++) {
+        this.numberStudents = this.passwordHashes.size();
+
+        for (int i = 0; i < this.numberStudents; i++) {
             this.assign(new Worker.PasswordMessage(i, passwordHashes.get(i)));
             this.assign(new Worker.PartnerMessage(i, sequencedGenes));
         }
@@ -328,7 +331,7 @@ public class Master extends AbstractActor {
 
 	private void startPrefixes() {
         int shardCount = this.busyWorkers.size() + this.idleWorkers.size();
-        long maxValue = (long) Math.pow((double) 2, (double) 42);
+        long maxValue = (long) Math.pow((double) 2, (double) this.numberStudents);
         long shardSize = maxValue / shardCount;
         for (int i = 0; i < shardCount; i++) {
            long end = (i + 1) * shardSize;
@@ -338,7 +341,7 @@ public class Master extends AbstractActor {
 
     private void startHashing() {
         this.isStartedHashing = true;
-        for (int i = 0; i < 42; i++) {
+        for (int i = 0; i < this.numberStudents; i++) {
             this.assign(new Worker.HashMiningMessage(i, partners.get(i), prefixes.get(i)));
         }
     }

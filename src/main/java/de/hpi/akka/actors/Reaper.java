@@ -1,4 +1,4 @@
-package de.hpi.octopus.actors;
+package de.hpi.akka.actors;
 
 import akka.actor.*;
 import akka.event.Logging;

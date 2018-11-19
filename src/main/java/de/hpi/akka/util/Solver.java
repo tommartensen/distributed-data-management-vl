@@ -1,14 +1,11 @@
-package de.hpi.octopus.util;
+package de.hpi.akka.util;
 
 import java.io.UnsupportedEncodingException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Random;
-import java.util.stream.Collectors;
 
 public class Solver {
 
@@ -36,15 +33,16 @@ public class Solver {
     }
 
     public static List<Integer> solve(long start, long end, List<Integer> numbers) {
-        int[] numberArray = new int[42];
-        for (int i = 0; i < 42; i++) {
+        int[] numberArray = new int[numbers.size()];
+        for (int i = 0; i < numbers.size(); i++) {
             numberArray[i] = numbers.get(i);
         }
+
         for (;start < end; start++) {
             String binary = Long.toBinaryString(start);
 
-            int[] prefixes = new int[42];
-            for (int i = 0; i < 42; i++)
+            int[] prefixes = new int[numbers.size()];
+            for (int i = 0; i < numbers.size(); i++)
                 prefixes[i] = 1;
 
             int i = 0;
@@ -56,7 +54,7 @@ public class Solver {
 
             if (sum(numberArray, prefixes) == 0) {
                 List<Integer> correctPrefixes = new ArrayList<>();
-                for (int k = 0; k < 42; k++) {
+                for (int k = 0; k < numbers.size(); k++) {
                     correctPrefixes.add(prefixes[k]);
                 }
                 return correctPrefixes;

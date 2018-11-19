@@ -1,4 +1,4 @@
-package de.hpi.octopus.actors;
+package de.hpi.akka.actors;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -14,9 +14,9 @@ import akka.cluster.Member;
 import akka.cluster.MemberStatus;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
-import de.hpi.octopus.AkkaMasterSystem;
-import de.hpi.octopus.actors.Master.RegistrationMessage;
-import de.hpi.octopus.util.Solver;
+import de.hpi.akka.AkkaMasterSystem;
+import de.hpi.akka.actors.Master.RegistrationMessage;
+import de.hpi.akka.util.Solver;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 

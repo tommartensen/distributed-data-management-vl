@@ -1,12 +1,12 @@
-package de.hpi.octopus;
+package de.hpi.akka;
 
 import com.typesafe.config.Config;
 
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.cluster.Cluster;
-import de.hpi.octopus.actors.*;
-import de.hpi.octopus.actors.listeners.ClusterListener;
+import de.hpi.akka.actors.*;
+import de.hpi.akka.actors.listeners.ClusterListener;
 
 public class AkkaMasterSystem extends AkkaBaseSystem {
 	
