@@ -6,6 +6,7 @@ import com.typesafe.config.Config;
 import akka.actor.ActorSystem;
 import akka.cluster.Cluster;
 import de.hpi.octopus.actors.Profiler;
+import de.hpi.octopus.actors.Reaper;
 import de.hpi.octopus.actors.Worker;
 
 
@@ -22,6 +23,8 @@ public class OctopusSlave extends OctopusSystem {
 		Cluster.get(system).registerOnMemberUp(new Runnable() {
 			@Override
 			public void run() {
+				system.actorOf(Reaper.props(), Reaper.DEFAULT_NAME);
+
 				for (int i = 0; i < workers; i++)
 					system.actorOf(Worker.props(), Worker.DEFAULT_NAME + i);
 			}

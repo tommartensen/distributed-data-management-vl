@@ -77,6 +77,11 @@ public class Worker extends AbstractActor {
         public int prefix;
     }
 
+    @Data @AllArgsConstructor @SuppressWarnings("unused")
+    public static class TerminationMessage implements Serializable {
+        private static final long serialVersionUID = 1859755325220694017L;
+    }
+
     /////////////////
     // Actor State //
     /////////////////
@@ -90,6 +95,7 @@ public class Worker extends AbstractActor {
 
     @Override
     public void preStart() {
+        Reaper.watchWithDefaultReaper(this);
         this.cluster.subscribe(this.self(), MemberUp.class);
     }
 

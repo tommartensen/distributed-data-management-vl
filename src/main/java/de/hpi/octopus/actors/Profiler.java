@@ -6,14 +6,12 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.*;
 
-import akka.actor.AbstractActor;
-import akka.actor.ActorRef;
-import akka.actor.Props;
-import akka.actor.Terminated;
+import akka.actor.*;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import org.ietf.jgss.GSSManager;
 
 public class Profiler extends AbstractActor {
 
@@ -276,6 +274,19 @@ public class Profiler extends AbstractActor {
                 }
                 this.log.info("Calculation Time: " + (endTime - this.startTime));
                 this.log.info("STOP SYSTEM!");
+
+
+                Set<ActorRef> workers = new HashSet<>();
+                for (ActorRef wor : this.idleWorkers)
+                	workers.add(wor);
+
+				for (ActorRef wor : this.busyWorkers.keySet())
+					workers.add(wor);
+
+				for (ActorRef wor : workers)
+					wor.tell(PoisonPill.getInstance(), this.getSelf());
+
+				this.getSelf().tell(PoisonPill.getInstance(), this.getSelf());
             }
         }
     }

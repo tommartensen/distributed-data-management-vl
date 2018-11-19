@@ -21,6 +21,7 @@ public class OctopusMaster extends OctopusSystem {
 			@Override
 			public void run() {
 				system.actorOf(ClusterListener.props(), ClusterListener.DEFAULT_NAME);
+				system.actorOf(Reaper.props(), Reaper.DEFAULT_NAME);
 				system.actorOf(Profiler.props(), Profiler.DEFAULT_NAME);
 
 				for (int i = 0; i < workers; i++)
