@@ -11,22 +11,21 @@ import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import org.ietf.jgss.GSSManager;
 
-public class Profiler extends AbstractActor {
+public class Master extends AbstractActor {
 
 	////////////////////////
 	// Actor Construction //
 	////////////////////////
 	
-	public static final String DEFAULT_NAME = "profiler";
+	public static final String DEFAULT_NAME = "master";
 
 	private List<String> names = new ArrayList<>();
 	private List<String> passwordHashes = new ArrayList<>();
 	private List<String> sequencedGenes = new ArrayList<>();
 
 	public static Props props() {
-		return Props.create(Profiler.class);
+		return Props.create(Master.class);
 	}
 
 	////////////////////

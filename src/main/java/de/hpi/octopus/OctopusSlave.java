@@ -1,11 +1,9 @@
 package de.hpi.octopus;
 
-import akka.actor.ActorRef;
 import com.typesafe.config.Config;
 
 import akka.actor.ActorSystem;
 import akka.cluster.Cluster;
-import de.hpi.octopus.actors.Profiler;
 import de.hpi.octopus.actors.Reaper;
 import de.hpi.octopus.actors.Worker;
 

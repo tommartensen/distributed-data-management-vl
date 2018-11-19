@@ -29,12 +29,12 @@ public class Reaper extends AbstractLoggingActor {
     public Receive createReceive() {
         return receiveBuilder()
                 .match(WatchMeMessage.class, message -> {
-                    this.log.debug("Watching " + this.sender());
+                    this.log.info("Watching " + this.sender());
                     if (this.watchees.add(this.sender()))
                         this.context().watch(this.sender());
                 })
                 .match(Terminated.class, message -> {
-                    System.out.println("Terminated " + this.sender());
+                    this.log.info("Terminated " + this.sender());
                     this.watchees.remove(this.sender());
                     if (this.watchees.isEmpty())
                         this.context().system().terminate();

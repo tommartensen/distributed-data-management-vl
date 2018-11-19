@@ -11,7 +11,7 @@ import akka.cluster.ClusterEvent.MemberRemoved;
 import akka.cluster.ClusterEvent.UnreachableMember;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
-import de.hpi.octopus.actors.Profiler;
+import de.hpi.octopus.actors.Master;
 
 public class ClusterListener extends AbstractActor {
 
@@ -56,7 +56,7 @@ public class ClusterListener extends AbstractActor {
 			this.log.info("Current members: {}", state.members());
 		}).match(MemberUp.class, mUp -> {
 			this.log.info("Member is Up: {}", mUp.member());
-			this.cluster.system().actorSelection("/user/" + Profiler.DEFAULT_NAME).tell(new Profiler.RegisterSlaveMessage(), ActorRef.noSender());
+			this.cluster.system().actorSelection("/user/" + Master.DEFAULT_NAME).tell(new Master.RegisterSlaveMessage(), ActorRef.noSender());
 		}).match(UnreachableMember.class, mUnreachable -> {
 			this.log.info("Member detected as unreachable: {}", mUnreachable.member());
 		}).match(MemberRemoved.class, mRemoved -> {

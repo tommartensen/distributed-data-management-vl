@@ -22,12 +22,12 @@ public class OctopusMaster extends OctopusSystem {
 			public void run() {
 				system.actorOf(ClusterListener.props(), ClusterListener.DEFAULT_NAME);
 				system.actorOf(Reaper.props(), Reaper.DEFAULT_NAME);
-				system.actorOf(Profiler.props(), Profiler.DEFAULT_NAME);
+				system.actorOf(Master.props(), Master.DEFAULT_NAME);
 
 				for (int i = 0; i < workers; i++)
 					system.actorOf(Worker.props(), Worker.DEFAULT_NAME + i);
 
-				system.actorSelection("/user/" + Profiler.DEFAULT_NAME).tell(new Profiler.TaskMessage(slaves, filePath), ActorRef.noSender());
+				system.actorSelection("/user/" + Master.DEFAULT_NAME).tell(new Master.TaskMessage(slaves, filePath), ActorRef.noSender());
 			}
 		});
 	}
