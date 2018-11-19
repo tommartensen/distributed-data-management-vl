@@ -7,19 +7,18 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParameterException;
 import com.beust.jcommander.Parameters;
-import de.hpi.octopus.OctopusMaster;
 
-public class OctopusApp {
+public class AkkaApp {
 
-	public static final String ACTOR_SYSTEM_NAME = "octopus";
+	public static final String ACTOR_SYSTEM_NAME = "akka";
 	
 	public static void main(String[] args) {
 
     	MasterCommand masterCommand = new MasterCommand();
         SlaveCommand slaveCommand = new SlaveCommand();
         JCommander jCommander = JCommander.newBuilder()
-        	.addCommand(OctopusMaster.MASTER_ROLE, masterCommand)
-            .addCommand(OctopusSlave.SLAVE_ROLE, slaveCommand)
+        	.addCommand(AkkaMasterSystem.MASTER_ROLE, masterCommand)
+            .addCommand(AkkaSlaveSystem.SLAVE_ROLE, slaveCommand)
             .build();
 
         try {
@@ -30,11 +29,11 @@ public class OctopusApp {
             }
 
             switch (jCommander.getParsedCommand()) {
-                case OctopusMaster.MASTER_ROLE:
-                    OctopusMaster.start(ACTOR_SYSTEM_NAME, masterCommand.host, masterCommand.port, masterCommand.workers, masterCommand.slaves, masterCommand.filePath);
+                case AkkaMasterSystem.MASTER_ROLE:
+                    AkkaMasterSystem.start(ACTOR_SYSTEM_NAME, masterCommand.host, masterCommand.port, masterCommand.workers, masterCommand.slaves, masterCommand.filePath);
                     break;
-                case OctopusSlave.SLAVE_ROLE:
-                    OctopusSlave.start(ACTOR_SYSTEM_NAME, slaveCommand.workers, slaveCommand.host, slaveCommand.port, slaveCommand.masterHost, slaveCommand.masterPort);
+                case AkkaSlaveSystem.SLAVE_ROLE:
+                    AkkaSlaveSystem.start(ACTOR_SYSTEM_NAME, slaveCommand.workers, slaveCommand.host, slaveCommand.port, slaveCommand.masterHost, slaveCommand.masterPort);
                     break;
                 default:
                     throw new AssertionError();

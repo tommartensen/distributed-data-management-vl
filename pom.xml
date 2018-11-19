@@ -5,8 +5,8 @@
 	<modelVersion>4.0.0</modelVersion>
 	<artifactId>octopus</artifactId>
 	<groupId>hpi.de</groupId>
-	<name>Octopus Data Profiling</name>
-	<version>1.0</version>
+	<name>Akka Assignment</name>
+	<version>1.0.0</version>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -112,7 +112,7 @@
 							<transformers>
 								<transformer
 									implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-									<mainClass>de.hpi.octopus.OctopusApp</mainClass>
+									<mainClass>de.hpi.octopus.AkkaApp</mainClass>
 								</transformer>
 								<transformer
 									implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">

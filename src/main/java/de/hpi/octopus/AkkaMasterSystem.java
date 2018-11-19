@@ -8,7 +8,7 @@ import akka.cluster.Cluster;
 import de.hpi.octopus.actors.*;
 import de.hpi.octopus.actors.listeners.ClusterListener;
 
-public class OctopusMaster extends OctopusSystem {
+public class AkkaMasterSystem extends AkkaBaseSystem {
 	
 	public static final String MASTER_ROLE = "master";
 	public static void start(String actorSystemName, String host, int port, int workers, int slaves, String filePath) {

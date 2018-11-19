@@ -10,7 +10,7 @@ import akka.cluster.Cluster;
 import scala.concurrent.Await;
 import scala.concurrent.duration.Duration;
 
-public class OctopusSystem {
+public class AkkaBaseSystem {
 
 	protected static Config createConfiguration(String actorSystemName, String actorSystemRole, String host, int port, String masterhost, int masterport) {
 		
@@ -22,7 +22,7 @@ public class OctopusSystem {
 				"akka.remote.artery.canonical.port = " + port + "\n" +
 				"akka.cluster.roles = [" + actorSystemRole + "]\n" +
 				"akka.cluster.seed-nodes = [\"akka://" + actorSystemName + "@" + masterhost + ":" + masterport + "\"]")
-			.withFallback(ConfigFactory.load("octopus"));
+			.withFallback(ConfigFactory.load("akka"));
 	}
 	
 	protected static ActorSystem createSystem(String actorSystemName, Config config) {

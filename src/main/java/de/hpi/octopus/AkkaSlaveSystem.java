@@ -8,7 +8,7 @@ import de.hpi.octopus.actors.Reaper;
 import de.hpi.octopus.actors.Worker;
 
 
-public class OctopusSlave extends OctopusSystem {
+public class AkkaSlaveSystem extends AkkaBaseSystem {
 
 	public static final String SLAVE_ROLE = "slave";
 

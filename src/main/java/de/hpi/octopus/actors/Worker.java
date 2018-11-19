@@ -14,7 +14,7 @@ import akka.cluster.Member;
 import akka.cluster.MemberStatus;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
-import de.hpi.octopus.OctopusMaster;
+import de.hpi.octopus.AkkaMasterSystem;
 import de.hpi.octopus.actors.Master.RegistrationMessage;
 import de.hpi.octopus.util.Solver;
 import lombok.AllArgsConstructor;
@@ -133,7 +133,7 @@ public class Worker extends AbstractActor {
     }
 
     private void register(Member member) {
-        if (member.hasRole(OctopusMaster.MASTER_ROLE))
+        if (member.hasRole(AkkaMasterSystem.MASTER_ROLE))
             this.getContext()
                     .actorSelection(member.address() + "/user/" + Master.DEFAULT_NAME)
                     .tell(new RegistrationMessage(), this.self());
