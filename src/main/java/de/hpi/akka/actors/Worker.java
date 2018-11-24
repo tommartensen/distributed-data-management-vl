@@ -4,6 +4,9 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import akka.actor.AbstractActor;
 import akka.actor.Props;
@@ -59,8 +62,6 @@ public class Worker extends AbstractActor {
     public static class PrefixMessage extends WorkMessage implements Serializable {
         private static final long serialVersionUID = 1746256255673692918L;
         private PrefixMessage() {}
-        public long start;
-        public long end;
         public Map<Integer, Integer> passwords;
     }
 
@@ -153,17 +154,37 @@ public class Worker extends AbstractActor {
         }
     }
 
+    /*
+    * Attempts batchSize prefixes, if found, returns, so Master can stop giving these tasks out, if not found tells FAILED, so in case s.o. else found a prefix, it can stop.
+     */
     private void handle(PrefixMessage message) {
-        this.log.debug("I am " + this.self().path() + " and do prefix finding for [" + message.start + ", " + message.end + "]");
-        List<Integer> passwords = new ArrayList<>();
-        for (int i = 0; i < message.passwords.size(); i++)
-            passwords.add(message.passwords.get(i));
-        try {
-            List<Integer> prefixes = Solver.solve(message.start, message.end, passwords);
-            this.sender().tell(new Master.PrefixCompletionMessage(Master.PrefixCompletionMessage.status.DONE, prefixes), this.self());
-        } catch (RuntimeException e) {
-            this.sender().tell(new Master.PrefixCompletionMessage(Master.PrefixCompletionMessage.status.FAILED), this.self());
+        int batchSize = 1000000;
+        this.log.debug("I am " + this.self().path() + " and do prefix finding for [" + batchSize + " prefixes]");
+        int[] passwords = new int[message.passwords.size()];
+        message.passwords.forEach((id, password) -> passwords[id] = password);
+        for (int i = 0; i < batchSize; i++) {
+            int[] prefixes = randomPrefixes(message.passwords.size());
+            if (Solver.sum(prefixes, passwords) == 0) {
+                List<Integer> prefixList = IntStream.of(prefixes).boxed().collect(Collectors.toList());
+                this.sender().tell(new Master.PrefixCompletionMessage(Master.PrefixCompletionMessage.status.DONE, prefixList), this.self());
+                return;
+            }
         }
+
+        this.sender().tell(new Master.PrefixCompletionMessage(Master.PrefixCompletionMessage.status.FAILED), this.self());
+    }
+
+    private static int[] randomPrefixes(int length) {
+        byte[] binaryPrefixes = new byte[length];
+        new Random().nextBytes(binaryPrefixes);
+        int[] prefixes = new int[length];
+        for (int j = length - 1; j >= 0; j--) {
+            if (binaryPrefixes[j] > 0)
+                prefixes[j] = 1;
+            else
+                prefixes[j] = -1;
+        }
+        return prefixes;
     }
 
     private void handle(PartnerMessage message) {

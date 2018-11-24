@@ -37,39 +37,7 @@ public class Solver {
         }
     }
 
-    public static List<Integer> solve(long start, long end, List<Integer> numbers) {
-        int[] numberArray = new int[numbers.size()];
-        for (int i = 0; i < numbers.size(); i++) {
-            numberArray[i] = numbers.get(i);
-        }
-
-        for (;start < end; start++) {
-            String binary = Long.toBinaryString(start);
-
-            int[] prefixes = new int[numbers.size()];
-            for (int i = 0; i < numbers.size(); i++)
-                prefixes[i] = 1;
-
-            int i = 0;
-            for (int j = binary.length() - 1; j >= 0; j--) {
-                if (binary.charAt(j) == '1')
-                    prefixes[i] = -1;
-                i++;
-            }
-
-            if (sum(numberArray, prefixes) == 0) {
-                List<Integer> correctPrefixes = new ArrayList<>();
-                for (int k = 0; k < numbers.size(); k++) {
-                    correctPrefixes.add(prefixes[k]);
-                }
-                return correctPrefixes;
-            }
-        }
-
-        throw new RuntimeException("Prefix not found!");
-    }
-
-    private static int sum(int[] numbers, int[] prefixes) {
+    public static int sum(int[] numbers, int[] prefixes) {
         int sum = 0;
         for (int i = 0; i < numbers.length; i++)
             sum += numbers[i] * prefixes[i];

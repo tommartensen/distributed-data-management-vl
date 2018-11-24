@@ -20,7 +20,9 @@ public class Reaper extends AbstractLoggingActor {
         return Props.create(Reaper.class);
     }
 
-    public static class WatchMeMessage implements Serializable { }
+    public static class WatchMeMessage implements Serializable {
+        private static final long serialVersionUID = -6058157411208395447L;
+    }
 
     public static void watchWithDefaultReaper(AbstractActor actor) {
         ActorSelection reaper = actor.context().system().actorSelection("/user/reaper");

@@ -129,6 +129,7 @@ public class Master extends AbstractActor {
 	private int desiredNumberSlaves;
 
 	// Master State to record the progress on the task.
+    private boolean isStartedPrefixes = false;
 	private boolean areDonePrefixes = false;
 	private boolean areDonePartners = false;
 	private boolean isStartedHashing = false;
@@ -333,6 +334,12 @@ public class Master extends AbstractActor {
 		Worker.WorkMessage work = this.unassignedWork.poll();
 		
 		if (work == null) {
+		    // if nothing else to do and prefix task is underway, do some prefix finding
+		    if (this.isStartedPrefixes && !areDonePrefixes) {
+		        Worker.WorkMessage newWork = new Worker.PrefixMessage(this.crackedPasswords);
+                this.busyWorkers.put(worker, newWork);
+                worker.tell(newWork, this.self());
+            }
 			this.idleWorkers.add(worker);
 			return;
 		}
@@ -358,18 +365,13 @@ public class Master extends AbstractActor {
     }
 
     // generates PrefixMessages.
-	// Uses numberOfSlaves shards for the binary string of length |students|.
-	// will probably return weird results, if long overflows!!
-	// TODO: fix!
 	private void startPrefixes() {
-        int shardCount = this.busyWorkers.size() + this.idleWorkers.size();
-        long maxValue = (long) Math.pow((double) 2, (double) this.numberStudents);
-        long shardSize = maxValue / shardCount;
-        for (int i = 0; i < shardCount; i++) {
-           long end = (i + 1) * shardSize;
-           this.assign(new Worker.PrefixMessage(i*shardSize, end, this.crackedPasswords));
-        }
+        this.isStartedPrefixes = true;
+        int numberWorkers = this.busyWorkers.size() + this.idleWorkers.size();
+        for (int i = 0; i < numberWorkers; i++)
+            this.assign(new Worker.PrefixMessage(this.crackedPasswords));
     }
+
 
     // starts the hashing
     private void startHashing() {
