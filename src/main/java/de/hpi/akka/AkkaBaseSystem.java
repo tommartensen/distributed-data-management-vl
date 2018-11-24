@@ -10,6 +10,9 @@ import akka.cluster.Cluster;
 import scala.concurrent.Await;
 import scala.concurrent.duration.Duration;
 
+/*
+* Taken from Octopus example.
+ */
 public class AkkaBaseSystem {
 
 	protected static Config createConfiguration(String actorSystemName, String actorSystemRole, String host, int port, String masterhost, int masterport) {

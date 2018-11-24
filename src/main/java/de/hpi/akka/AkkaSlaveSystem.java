@@ -7,7 +7,9 @@ import akka.cluster.Cluster;
 import de.hpi.akka.actors.Reaper;
 import de.hpi.akka.actors.Worker;
 
-
+/*
+* Taken from Octopus Example. Added reaper.
+ */
 public class AkkaSlaveSystem extends AkkaBaseSystem {
 
 	public static final String SLAVE_ROLE = "slave";

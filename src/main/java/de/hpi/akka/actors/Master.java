@@ -12,6 +12,10 @@ import akka.event.LoggingAdapter;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
+/*
+* Based on Octopus Profiler class.
+*
+ */
 public class Master extends AbstractActor {
 
 	////////////////////////
@@ -20,6 +24,7 @@ public class Master extends AbstractActor {
 	
 	public static final String DEFAULT_NAME = "master";
 
+	// hold raw data
 	private List<String> names = new ArrayList<>();
 	private List<String> passwordHashes = new ArrayList<>();
 	private List<String> sequencedGenes = new ArrayList<>();
@@ -32,12 +37,14 @@ public class Master extends AbstractActor {
 	////////////////////
 	// Actor Messages //
 	////////////////////
-	
+
+	// used by Workers for registration at start.
 	@Data @AllArgsConstructor
 	public static class RegistrationMessage implements Serializable {
 		private static final long serialVersionUID = 4545299661052078209L;
 	}
 
+	// used to start Master from MasterSystem.
 	@Data @AllArgsConstructor @SuppressWarnings("unused")
 	public static class TaskMessage implements Serializable {
 		private static final long serialVersionUID = -8330958742629706627L;
@@ -46,11 +53,13 @@ public class Master extends AbstractActor {
 		public String filePath;
 	}
 
+	// used when new slave is registered.
 	@Data @AllArgsConstructor @SuppressWarnings("unused")
 	public static class RegisterSlaveMessage implements Serializable {
 		private static final long serialVersionUID = -7472726661953028641L;
 	}
 
+	// used from Worker when PasswordCracking is completed. Carries cracked password in payload.
 	@Data @AllArgsConstructor @SuppressWarnings("unused")
 	public static class PasswordCompletionMessage implements Serializable {
 		private static final long serialVersionUID = -6823011111281387872L;
@@ -64,6 +73,7 @@ public class Master extends AbstractActor {
 		public int password;
 	}
 
+	// used from Worker when PrefixFinding is completed. Carries possible prefix in payload.
 	@Data @AllArgsConstructor @SuppressWarnings("unused")
 	public static class PrefixCompletionMessage implements Serializable {
 		private static final long serialVersionUID = 5933119973166777442L;
@@ -76,6 +86,7 @@ public class Master extends AbstractActor {
 		public List<Integer> prefixes;
 	}
 
+	// used from Worker when PartnerFinding is completed. Carries partner in payload.
     @Data @AllArgsConstructor @SuppressWarnings("unused")
     public static class PartnerCompletionMessage implements Serializable {
         private static final long serialVersionUID = 8423520414177733108L;
@@ -89,6 +100,7 @@ public class Master extends AbstractActor {
         public int partner;
     }
 
+    // used from Worker when HashMining is completed. Carries proposed hash in payload.
     @Data @AllArgsConstructor @SuppressWarnings("unused")
     public static class HashMiningCompletionMessage implements Serializable {
         private static final long serialVersionUID = 6969909201709811241L;
@@ -115,10 +127,13 @@ public class Master extends AbstractActor {
 	private TaskMessage task;
 	private int numberSlaves = 0;
 	private int desiredNumberSlaves;
+
+	// Master State to record the progress on the task.
 	private boolean areDonePrefixes = false;
 	private boolean areDonePartners = false;
 	private boolean isStartedHashing = false;
 	private boolean doneWithAllTasks = false;
+
 	private String filePath;
 
 	/////////////
@@ -149,6 +164,7 @@ public class Master extends AbstractActor {
 				.build();
 	}
 
+	// register workers
     private void handle(RegistrationMessage message) {
 		this.context().watch(this.sender());
 		
@@ -156,13 +172,15 @@ public class Master extends AbstractActor {
 		this.log.info("Registered {}", this.sender());
 	}
 
+	// register slaves
 	private void handle(RegisterSlaveMessage message) {
 		this.numberSlaves++;
 		if (this.numberSlaves == this.desiredNumberSlaves) {
 			kickOff();
 		}
 	}
-	
+
+	// react to Worker terminated message.
 	private void handle(Terminated message) {
 		this.context().unwatch(message.getActor());
 		
@@ -174,10 +192,11 @@ public class Master extends AbstractActor {
 		}		
 		this.log.info("Unregistered {}", message.getActor());
 	}
-	
+
+	// react to TaskMessage from MasterSystem
 	private void handle(TaskMessage message) {
 		if (this.task != null)
-			this.log.error("The profiler actor can process only one task in its current implementation!");
+			this.log.error("The master actor can process only one task in its current implementation!");
 
 		this.desiredNumberSlaves = message.slaves;
 		this.filePath = message.filePath;
@@ -186,7 +205,8 @@ public class Master extends AbstractActor {
 			kickOff();
 		}
 	}
-	
+
+	// react to PasswordCracking completed message. Triggers prefix finding task if all passwords were found.
 	private void handle(PasswordCompletionMessage message) {
 		ActorRef worker = this.sender();
 		Worker.WorkMessage work = this.busyWorkers.remove(worker);
@@ -207,6 +227,7 @@ public class Master extends AbstractActor {
         }
 	}
 
+	// react to prefix finding completed message. Triggers hashing, if all prefixes, partners are found and hashing was not already started.
 	private void handle(PrefixCompletionMessage message) {
 		ActorRef worker = this.sender();
 		this.busyWorkers.remove(worker);
@@ -229,6 +250,7 @@ public class Master extends AbstractActor {
 		}
 	}
 
+	// handles partner found message. Starts hash finding, if all partners and prefixes are found and task not started yet.
 	private void handle(PartnerCompletionMessage message) {
         ActorRef worker = this.sender();
         this.busyWorkers.remove(worker);
@@ -252,6 +274,7 @@ public class Master extends AbstractActor {
         }
     }
 
+    // handles hash mining completion message. Outputs result as soon as all hashes are found and gives PoisonPill to all Actors.
     private void handle(HashMiningCompletionMessage message) {
         ActorRef worker = this.sender();
         this.busyWorkers.remove(worker);
@@ -291,6 +314,8 @@ public class Master extends AbstractActor {
         }
     }
 
+
+    // taken from octopus tutorial. Assigns work message (or subclass) to idle worker.
 	private void assign(Worker.WorkMessage work) {
 	    ActorRef worker = this.idleWorkers.poll();
 		
@@ -302,7 +327,8 @@ public class Master extends AbstractActor {
 		this.busyWorkers.put(worker, work);
 		worker.tell(work, this.self());
 	}
-	
+
+	// taken from octopus tutorial. Assigns a given worker an unassigned work item.
 	private void assign(ActorRef worker) {
 		Worker.WorkMessage work = this.unassignedWork.poll();
 		
@@ -315,6 +341,8 @@ public class Master extends AbstractActor {
 		worker.tell(work, this.self());
 	}
 
+	// starts the processing (triggered when the number of slaves reaches the desired threshold).
+	// Starts with partner and password finding.
     private void kickOff() {
         startTime = System.currentTimeMillis();
         this.log.info("Start processing");
@@ -329,6 +357,10 @@ public class Master extends AbstractActor {
         }
     }
 
+    // generates PrefixMessages.
+	// Uses numberOfSlaves shards for the binary string of length |students|.
+	// will probably return weird results, if long overflows!!
+	// TODO: fix!
 	private void startPrefixes() {
         int shardCount = this.busyWorkers.size() + this.idleWorkers.size();
         long maxValue = (long) Math.pow((double) 2, (double) this.numberStudents);
@@ -339,6 +371,7 @@ public class Master extends AbstractActor {
         }
     }
 
+    // starts the hashing
     private void startHashing() {
         this.isStartedHashing = true;
         for (int i = 0; i < this.numberStudents; i++) {
@@ -346,6 +379,7 @@ public class Master extends AbstractActor {
         }
     }
 
+    // loads the file. Removes empty lines!
 	private void loadFile(String filePath) {
 		String line = "";
 		String cvsSplitBy = ";";

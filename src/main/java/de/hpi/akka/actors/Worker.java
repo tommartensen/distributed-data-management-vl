@@ -20,6 +20,10 @@ import de.hpi.akka.util.Solver;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
+/*
+* Based on Worker from Octopus tutorial. Should be straight forward. Uses Solver class to process the task.
+* Returns FAILED message where applicable.
+ */
 public class Worker extends AbstractActor {
 
     ////////////////////////

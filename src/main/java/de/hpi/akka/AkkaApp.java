@@ -8,6 +8,9 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParameterException;
 import com.beust.jcommander.Parameters;
 
+/*
+* Main application logic. Commands defined here and Master/Slave system started.
+*/
 public class AkkaApp {
 
 	public static final String ACTOR_SYSTEM_NAME = "akka";

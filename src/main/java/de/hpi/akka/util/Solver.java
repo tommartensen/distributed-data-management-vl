@@ -7,6 +7,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+
+/*
+* Based on SerialAnalyzer from Material.
+* Removed hard coding and did some array to list conversions for easier handling of values in the main application.
+*/
 public class Solver {
 
     public static int unHash(String hexHash) {

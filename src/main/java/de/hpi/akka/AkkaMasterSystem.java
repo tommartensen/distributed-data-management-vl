@@ -8,6 +8,9 @@ import akka.cluster.Cluster;
 import de.hpi.akka.actors.*;
 import de.hpi.akka.actors.listeners.ClusterListener;
 
+/*
+* Taken from Octopus example. Added reaper and own workers as well as adapted TaskMessage.
+ */
 public class AkkaMasterSystem extends AkkaBaseSystem {
 	
 	public static final String MASTER_ROLE = "master";

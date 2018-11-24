@@ -13,6 +13,9 @@ import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import de.hpi.akka.actors.Master;
 
+/*
+* Copied from Octopus Example.
+ */
 public class ClusterListener extends AbstractActor {
 
 	////////////////////////

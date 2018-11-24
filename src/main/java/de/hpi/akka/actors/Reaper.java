@@ -7,6 +7,9 @@ import akka.event.LoggingAdapter;
 import java.io.Serializable;
 import java.util.*;
 
+/*
+* Based on Reaper from Akka tutorial.
+ */
 public class Reaper extends AbstractLoggingActor {
 
     public static final String DEFAULT_NAME = "reaper";
