@@ -14,7 +14,7 @@ import java.util.Random;
 public class Solver {
 
     public static int unHash(String hexHash) {
-        for (int i = 100000; i < Integer.MAX_VALUE; i++)
+        for (int i = 100000; i < 999999; i++)
             if (hash(i).equals(hexHash))
                 return i;
         throw new RuntimeException("Cracking failed for " + hexHash);
