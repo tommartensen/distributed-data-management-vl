@@ -3,7 +3,6 @@ package de.hpi.akka.util;
 import java.io.UnsupportedEncodingException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
@@ -15,7 +14,7 @@ import java.util.Random;
 public class Solver {
 
     public static int unHash(String hexHash) {
-        for (int i = 0; i < Integer.MAX_VALUE; i++)
+        for (int i = 100000; i < Integer.MAX_VALUE; i++)
             if (hash(i).equals(hexHash))
                 return i;
         throw new RuntimeException("Cracking failed for " + hexHash);
@@ -99,14 +98,14 @@ public class Solver {
         return str1.substring(longestSubstringStart, longestSubstringStart + longestSubstringLength);
     }
 
-    public static String findHash(int content, int prefix) {
+    public static String findHash(int partnerId, int prefix) {
         String fullPrefix = (prefix > 0) ? "11111" : "00000";
         Random rand = new Random(13);
 
         int nonce;
         while (true) {
             nonce = rand.nextInt();
-            String hash = hash(content + nonce);
+            String hash = hash(partnerId + nonce);
             if (hash.startsWith(fullPrefix))
                 return hash;
         }

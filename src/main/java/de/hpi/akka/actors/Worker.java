@@ -145,7 +145,7 @@ public class Worker extends AbstractActor {
     }
 
     private void handle(PasswordMessage message) {
-        this.log.info("I am " + this.self().path() + " and do password finding for" + message.id);
+        this.log.info("I am " + this.self().path() + " and do password finding for " + message.id);
         try {
             int password = Solver.unHash(message.hash);
             this.sender().tell(new Master.PasswordCompletionMessage(Master.PasswordCompletionMessage.status.DONE, message.id, password), this.self());

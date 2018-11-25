@@ -297,6 +297,7 @@ public class Master extends AbstractActor {
                     this.log.info((i + 1) + "," + this.names.get(i) + "," + this.crackedPasswords.get(i) + "," + this.prefixes.get(i) + "," + this.partners.get(i) + "," + this.partnerHashes.get(i));
                 }
                 this.log.info("Calculation Time: " + (endTime - this.startTime));
+				System.out.println("Time: " + (endTime - this.startTime));
                 this.log.info("STOP SYSTEM!");
 
 
