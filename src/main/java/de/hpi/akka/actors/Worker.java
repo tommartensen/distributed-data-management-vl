@@ -145,7 +145,7 @@ public class Worker extends AbstractActor {
     }
 
     private void handle(PasswordMessage message) {
-        this.log.debug("I am " + this.self().path() + " and do password finding for" + message.id);
+        this.log.info("I am " + this.self().path() + " and do password finding for" + message.id);
         try {
             int password = Solver.unHash(message.hash);
             this.sender().tell(new Master.PasswordCompletionMessage(Master.PasswordCompletionMessage.status.DONE, message.id, password), this.self());
@@ -159,7 +159,7 @@ public class Worker extends AbstractActor {
      */
     private void handle(PrefixMessage message) {
         int batchSize = 1000000;
-        this.log.debug("I am " + this.self().path() + " and do prefix finding for [" + batchSize + " prefixes]");
+        this.log.info("I am " + this.self().path() + " and do prefix finding for [" + batchSize + " prefixes]");
         int[] passwords = new int[message.passwords.size()];
         message.passwords.forEach((id, password) -> passwords[id] = password);
         for (int i = 0; i < batchSize; i++) {
@@ -188,7 +188,7 @@ public class Worker extends AbstractActor {
     }
 
     private void handle(PartnerMessage message) {
-        this.log.debug("I am " + this.self().path() + " and do partner finding for " + message.id);
+        this.log.info("I am " + this.self().path() + " and do partner finding for " + message.id);
 
         // add one since we start counting at 1 :(
         int partner = Solver.longestOverlapPartner(message.id, message.sequences) + 1;
@@ -196,7 +196,7 @@ public class Worker extends AbstractActor {
     }
 
     private void handle(HashMiningMessage message) {
-        this.log.debug("I am " + this.self().path() + " and do hash mining for " + message.id);
+        this.log.info("I am " + this.self().path() + " and do hash mining for " + message.id);
         String hash = Solver.findHash(message.partner, message.prefix);
         this.sender().tell(new Master.HashMiningCompletionMessage(Master.HashMiningCompletionMessage.status.DONE, message.id, hash), this.self());
     }
