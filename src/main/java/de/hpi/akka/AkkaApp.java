@@ -62,11 +62,12 @@ public class AkkaApp {
     	String getDefaultHost() {
             try {
                 return InetAddress.getLocalHost().getHostAddress();
-            } catch (UnknownHostException e) {
+            } catch (Exception e) {
                 return "localhost";
             }
         }
 
+        @Parameter(names = {"-ip"}, description = "externally facing IP", required = false)
         String host = this.getDefaultHost();
 
     	@Parameter(names = {"-p", "--port"}, description = "port to start system on", required = false)
@@ -102,8 +103,6 @@ public class AkkaApp {
             return DEFAULT_SLAVE_PORT;
         }
 
-        String host = this.getDefaultHost();
-        
         int masterPort = DEFAULT_MASTER_PORT;
 
         @Parameter(names = {"-h", "--host"}, description = "this machine's host name or IP to bind against", required = true)
