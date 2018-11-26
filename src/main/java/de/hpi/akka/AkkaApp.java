@@ -62,7 +62,7 @@ public class AkkaApp {
     	String getDefaultHost() {
             try {
                 return InetAddress.getLocalHost().getHostAddress();
-            } catch (Exception e) {
+            } catch (UnknownHostException e) {
                 return "localhost";
             }
         }
