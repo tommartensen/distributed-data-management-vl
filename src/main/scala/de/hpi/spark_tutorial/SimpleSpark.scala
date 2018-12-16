@@ -64,10 +64,11 @@ object SimpleSpark extends App {
     val INDs = preINDs
       .filter(_._2.nonEmpty)
       .orderBy(preINDs.columns(0))
+      .map(ind => ind._1 + " < " + ind._2.reduce(_ + ", " + _))
       .collect()
 
     println("OUTPUT")
-    INDs.foreach(a => println(a._1 + " < " + a._2.reduce(_ + ", " + _)))
+    INDs.foreach(a => println(_))
   }
 
 
