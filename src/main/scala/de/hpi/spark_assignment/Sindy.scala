@@ -1,11 +1,11 @@
-package de.hpi.spark_tutorial
+package de.hpi.spark_assignment
 
 import org.apache.spark.sql.SparkSession
 
 import org.apache.log4j.Logger
 import org.apache.log4j.Level
 
-object SimpleSpark extends App {
+object Sindy extends App {
 
   def discoverINDs(path: String, inputs: List[String], spark: SparkSession): Unit = {
 
@@ -67,8 +67,8 @@ object SimpleSpark extends App {
       .map(ind => ind._1 + " < " + ind._2.reduce(_ + ", " + _))
       .collect()
 
-    println("OUTPUT")
-    INDs.foreach(a => println(_))
+    println("Output:")
+    INDs.foreach(println(_))
   }
 
 
