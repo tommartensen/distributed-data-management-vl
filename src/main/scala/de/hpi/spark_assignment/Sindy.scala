@@ -27,7 +27,9 @@ object Sindy extends App {
         // cell: value, column name
         .map(cell => (cell._1, Set(cell._2)))
 
-      // per table pre-aggregation
+
+
+      // per table pre-aggregation: group by cell value, adding up column names
       tableCells
         .groupByKey(_._1)
         .reduceGroups((a, b) => (a._1, a._2 ++ b._2))
@@ -37,7 +39,7 @@ object Sindy extends App {
     //union all cells into one list
     val cells = tables.reduce((a,b) => a.union(b))
 
-    //Aggregation: Grouping by key, adding up the column names
+    // aggregation: Grouping by cell values, adding up the column names
     val attributeSetsPreResult = cells
       .groupByKey(_._1)
       .reduceGroups((a, b) => (a._1, a._2 ++ b._2))
