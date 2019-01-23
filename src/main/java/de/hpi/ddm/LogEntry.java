@@ -6,12 +6,14 @@ import org.joda.time.format.DateTimeFormatter;
 import org.apache.log4j.Logger;
 
 import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class LogEntry {
     private final static Logger logger = Logger.getLogger(LogEntry.class);
 
     private static transient DateTimeFormatter timeFormatter =
-            DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss").withLocale(Locale.US).withZoneUTC();
+            DateTimeFormat.forPattern("dd/MMM/yyyy:HH:mm:ss Z").withLocale(Locale.US).withZoneUTC();
 
     public LogEntry() {
         this.timestamp = new DateTime();
@@ -36,14 +38,12 @@ public class LogEntry {
     public int bytesTransferred;
 
 
-    // TODO: Starting point for parsing the log entry from the log
-    // Examples:
-    // in24.inetnebr.com - - [01/Aug/1995:00:00:01 -0400] "GET /shuttle/missions/sts-68/news/sts-68-mcc-05.txt HTTP/1.0" 200 1839
-    // 133.43.96.45 - - [01/Aug/1995:00:00:16 -0400] "GET /shuttle/missions/sts-69/mission-sts-69.html HTTP/1.0" 200 10566
     public static LogEntry fromString(String line) {
+        String regex = "(?<accessor>.*)\\s-\\s-\\s\\[(?<timestamp>.+)\\]\\s\"(?<httpMethod>.+)\\s(?<resource>.+)\\s(?<httpVersion>.+)\"\\s(?<httpStatus>\\d{3})\\s(?<bytesTransferred>\\d+)";
+        Pattern pattern = Pattern.compile(regex);
 
-        String[] tokens = line.split(",");
-        if (tokens.length != 7) {
+        Matcher matcher = pattern.matcher(line);
+        if (!matcher.find() ||  matcher.groupCount() != 7) {
             logger.warn("Invalid record: " + line);
             return new LogEntry();
         }
@@ -51,14 +51,13 @@ public class LogEntry {
         LogEntry logEntry = new LogEntry();
 
         try {
-            logEntry.timestamp = DateTime.parse(tokens[2], timeFormatter);
-            logEntry.accessor = tokens[8];
-            logEntry.httpMethod = tokens[5];
-            logEntry.resource = tokens[6];
-            logEntry.httpVersion = tokens[8];
-            logEntry.httpStatus = Integer.parseInt(tokens[8]);
-            logEntry.bytesTransferred = Integer.parseInt(tokens[9]);
-
+            logEntry.timestamp = DateTime.parse(matcher.group("timestamp"), timeFormatter);
+            logEntry.accessor = matcher.group("accessor");
+            logEntry.httpMethod = matcher.group("httpMethod");
+            logEntry.resource = matcher.group("resource");
+            logEntry.httpVersion = matcher.group("httpVersion");
+            logEntry.httpStatus = Integer.parseInt(matcher.group("httpStatus"));
+            logEntry.bytesTransferred = Integer.parseInt(matcher.group("bytesTransferred"));
         } catch (NumberFormatException nfe) {
             throw new RuntimeException("Invalid record: " + line, nfe);
         }
