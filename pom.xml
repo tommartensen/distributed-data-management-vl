@@ -97,7 +97,12 @@ under the License.
             <artifactId>joda-time</artifactId>
             <version>2.10</version>
         </dependency>
-    </dependencies>
+		<dependency>
+			<groupId>log4j</groupId>
+			<artifactId>log4j</artifactId>
+			<version>1.2.16</version>
+		</dependency>
+	</dependencies>
 
 	<build>
 		<plugins>
@@ -149,7 +154,7 @@ under the License.
 							</filters>
 							<transformers>
 								<transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-									<mainClass>de.hpi.ddm.StreamingJob</mainClass>
+									<mainClass>de.hpi.ddm.FlinkAssignment</mainClass>
 								</transformer>
 							</transformers>
 						</configuration>

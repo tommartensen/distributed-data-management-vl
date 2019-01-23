@@ -13,7 +13,6 @@ import java.util.Calendar;
 import java.util.Comparator;
 import java.util.PriorityQueue;
 import java.util.Random;
-import java.util.zip.GZIPInputStream;
 
 public class LogEntrySource implements SourceFunction<LogEntry> {
 
@@ -24,7 +23,7 @@ public class LogEntrySource implements SourceFunction<LogEntry> {
     private final int servingSpeed;
 
     private transient BufferedReader reader;
-    private transient InputStream gzipStream;
+    private transient InputStream fileStream;
 
     public LogEntrySource(String dataFilePath, int servingSpeedFactor) {
         this(dataFilePath, 0, servingSpeedFactor);
@@ -43,16 +42,15 @@ public class LogEntrySource implements SourceFunction<LogEntry> {
     @Override
     public void run(SourceContext<LogEntry> sourceContext) throws Exception {
 
-        gzipStream = new GZIPInputStream(new FileInputStream(dataFilePath));
-        reader = new BufferedReader(new InputStreamReader(gzipStream, "UTF-8"));
+        fileStream = new FileInputStream(dataFilePath);
+        reader = new BufferedReader(new InputStreamReader(fileStream, "UTF-8"));
 
         generateUnorderedStream(sourceContext);
 
         this.reader.close();
         this.reader = null;
-        this.gzipStream.close();
-        this.gzipStream = null;
-
+        this.fileStream.close();
+        this.fileStream = null;
     }
 
     private void generateUnorderedStream(SourceContext<LogEntry> sourceContext) throws Exception {
@@ -70,18 +68,18 @@ public class LogEntrySource implements SourceFunction<LogEntry> {
                     }
                 });
 
-        // read first ride and insert it into emit schedule
+        // read first logEntry and insert it into emit schedule
         String line;
-        LogEntry ride;
+        LogEntry logEntry;
         if (reader.ready() && (line = reader.readLine()) != null) {
-            // read first ride
-            ride = LogEntry.fromString(line);
+            // read first logEntry
+            logEntry = LogEntry.fromString(line);
             // extract starting timestamp
-            dataStartTime = getEventTime(ride);
+            dataStartTime = getEventTime(logEntry);
             // get delayed time
             long delayedEventTime = dataStartTime + getNormalDelayMsecs(rand);
 
-            emitSchedule.add(new Tuple2<Long, Object>(delayedEventTime, ride));
+            emitSchedule.add(new Tuple2<Long, Object>(delayedEventTime, logEntry));
             // schedule next watermark
             long watermarkTime = dataStartTime + watermarkDelayMSecs;
             Watermark nextWatermark = new Watermark(watermarkTime - maxDelayMsecs - 1);
@@ -91,35 +89,35 @@ public class LogEntrySource implements SourceFunction<LogEntry> {
             return;
         }
 
-        // peek at next ride
+        // peek at next logEntry
         if (reader.ready() && (line = reader.readLine()) != null) {
-            ride = LogEntry.fromString(line);
+            logEntry = LogEntry.fromString(line);
         }
 
-        // read rides one-by-one and emit a random ride from the buffer each time
+        // read rides one-by-one and emit a random logEntry from the buffer each time
         while (emitSchedule.size() > 0 || reader.ready()) {
 
             // insert all events into schedule that might be emitted next
             long curNextDelayedEventTime = !emitSchedule.isEmpty() ? emitSchedule.peek().f0 : -1;
-            long rideEventTime = ride != null ? getEventTime(ride) : -1;
+            long logEntryEventTime = logEntry != null ? getEventTime(logEntry) : -1;
             while(
-                    ride != null && ( // while there is a ride AND
-                            emitSchedule.isEmpty() || // and no ride in schedule OR
-                                    rideEventTime < curNextDelayedEventTime + maxDelayMsecs) // not enough rides in schedule
+                    logEntry != null && ( // while there is a logEntry AND
+                            emitSchedule.isEmpty() || // and no logEntry in schedule OR
+                                    logEntryEventTime < curNextDelayedEventTime + maxDelayMsecs) // not enough rides in schedule
             )
             {
                 // insert event into emit schedule
-                long delayedEventTime = rideEventTime + getNormalDelayMsecs(rand);
-                emitSchedule.add(new Tuple2<Long, Object>(delayedEventTime, ride));
+                long delayedEventTime = logEntryEventTime + getNormalDelayMsecs(rand);
+                emitSchedule.add(new Tuple2<Long, Object>(delayedEventTime, logEntry));
 
-                // read next ride
+                // read next logEntry
                 if (reader.ready() && (line = reader.readLine()) != null) {
-                    ride = LogEntry.fromString(line);
-                    rideEventTime = getEventTime(ride);
+                    logEntry = LogEntry.fromString(line);
+                    logEntryEventTime = getEventTime(logEntry);
                 }
                 else {
-                    ride = null;
-                    rideEventTime = -1;
+                    logEntry = null;
+                    logEntryEventTime = -1;
                 }
             }
 
@@ -135,7 +133,7 @@ public class LogEntrySource implements SourceFunction<LogEntry> {
 
             if(head.f1 instanceof LogEntry) {
                 LogEntry emitRide = (LogEntry) head.f1;
-                // emit ride
+                // emit logEntry
                 sourceContext.collectWithTimestamp(emitRide, getEventTime(emitRide));
             }
             else if(head.f1 instanceof Watermark) {
@@ -155,8 +153,8 @@ public class LogEntrySource implements SourceFunction<LogEntry> {
         return servingStartTime + (dataDiff / this.servingSpeed);
     }
 
-    public long getEventTime(LogEntry ride) {
-        return ride.getEventTime();
+    public long getEventTime(LogEntry logEntry) {
+        return logEntry.getEventTime();
     }
 
     public long getNormalDelayMsecs(Random rand) {
@@ -174,14 +172,14 @@ public class LogEntrySource implements SourceFunction<LogEntry> {
             if (this.reader != null) {
                 this.reader.close();
             }
-            if (this.gzipStream != null) {
-                this.gzipStream.close();
+            if (this.fileStream != null) {
+                this.fileStream.close();
             }
         } catch(IOException ioe) {
             throw new RuntimeException("Could not cancel SourceFunction", ioe);
         } finally {
             this.reader = null;
-            this.gzipStream = null;
+            this.fileStream = null;
         }
     }
 
