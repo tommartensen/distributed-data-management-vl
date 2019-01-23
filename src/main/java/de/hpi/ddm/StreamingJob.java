@@ -18,6 +18,10 @@
 
 package de.hpi.ddm;
 
+import org.apache.flink.api.common.functions.FilterFunction;
+import org.apache.flink.api.common.functions.MapFunction;
+import org.apache.flink.streaming.api.TimeCharacteristic;
+import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 
 /**
@@ -37,12 +41,11 @@ public class StreamingJob {
 	public static void main(String[] args) throws Exception {
 		// set up the streaming execution environment
 		final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+		env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
+		env.setParallelism(4); // how many workers ?
+		String textPath = "/home/tom/Downloads/swagger.yaml";
 
 		/*
-		 * Here, you can start creating your execution plan for Flink.
-		 *
-		 * Start with getting some data from the environment, like
-		 * env.readTextFile(textPath);
 		 *
 		 * then, transform the resulting DataStream<String> using operations
 		 * like
@@ -58,7 +61,28 @@ public class StreamingJob {
 		 *
 		 */
 
+		DataStream<String> logEntries = env.readTextFile(textPath)
+				.filter(new NYCFilter())
+				.map(row -> row.trim());
+
+		logEntries.print();
+
 		// execute program
 		env.execute("Flink Streaming Java API Skeleton");
+	}
+
+	private static class NYCFilter implements FilterFunction<String> {
+
+		@Override
+		public boolean filter(String row) {
+			return row.trim().startsWith("/");
+		}
+	}
+
+	private static class Trimmer implements MapFunction<String, String> {
+		@Override
+		public String map(String row) {
+			return row.trim();
+		}
 	}
 }
