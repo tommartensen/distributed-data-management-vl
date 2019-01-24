@@ -19,8 +19,8 @@ public class LogEntry {
         this.timestamp = new DateTime();
     }
 
-    public LogEntry(String accessor, DateTime timestamp, String httpMethod, String resource, String httpVersion, int httpStatus, int bytesTransferred) {
-        this.accessor = accessor;
+    public LogEntry(String client, DateTime timestamp, String httpMethod, String resource, String httpVersion, int httpStatus, int bytesTransferred) {
+        this.client = client;
         this.timestamp = timestamp;
         this.httpMethod = httpMethod;
         this.resource = resource;
@@ -29,7 +29,7 @@ public class LogEntry {
         this.bytesTransferred = bytesTransferred;
     }
 
-    public String accessor;
+    public String client;
     public DateTime timestamp;
     public String httpMethod;
     public String resource;
@@ -38,8 +38,20 @@ public class LogEntry {
     public int bytesTransferred;
 
 
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(timestamp).append(",");
+        sb.append(client).append(",");
+        sb.append(httpMethod).append(",");
+        sb.append(resource).append(",");
+        sb.append(httpVersion).append(",");
+        sb.append(httpStatus).append(",");
+        sb.append(bytesTransferred);
+        return sb.toString();
+    }
+
     public static LogEntry fromString(String line) {
-        String regex = "(?<accessor>.*)\\s-\\s-\\s\\[(?<timestamp>.+)\\]\\s\"(?<httpMethod>.+)\\s(?<resource>.+)\\s(?<httpVersion>.+)\"\\s(?<httpStatus>\\d{3})\\s(?<bytesTransferred>\\d+)";
+        String regex = "(?<client>.*)\\s-\\s-\\s\\[(?<timestamp>.+)\\]\\s\"(?<httpMethod>.+)\\s(?<resource>.+)\\s(?<httpVersion>.+)\"\\s(?<httpStatus>\\d{3})\\s(?<bytesTransferred>\\d+)";
         Pattern pattern = Pattern.compile(regex);
 
         Matcher matcher = pattern.matcher(line);
@@ -52,7 +64,7 @@ public class LogEntry {
 
         try {
             logEntry.timestamp = DateTime.parse(matcher.group("timestamp"), timeFormatter);
-            logEntry.accessor = matcher.group("accessor");
+            logEntry.client = matcher.group("client");
             logEntry.httpMethod = matcher.group("httpMethod");
             logEntry.resource = matcher.group("resource");
             logEntry.httpVersion = matcher.group("httpVersion");
@@ -77,7 +89,7 @@ public class LogEntry {
     public boolean equals(Object other) {
         return other instanceof LogEntry &&
                 this.timestamp == ((LogEntry) other).timestamp
-                && this.accessor.equals(((LogEntry) other).accessor)
+                && this.client.equals(((LogEntry) other).client)
                 && this.bytesTransferred == ((LogEntry) other).bytesTransferred;
     }
 
