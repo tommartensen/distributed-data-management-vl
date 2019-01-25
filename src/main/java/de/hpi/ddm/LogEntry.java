@@ -15,25 +15,15 @@ public class LogEntry {
     private static transient DateTimeFormatter timeFormatter =
             DateTimeFormat.forPattern("dd/MMM/yyyy:HH:mm:ss Z").withLocale(Locale.US).withZoneUTC();
 
-    public LogEntry() {
-        this.timestamp = new DateTime();
+    private LogEntry() {
+        this.timestamp = new DateTime(0);
     }
 
-    public LogEntry(String client, DateTime timestamp, String httpMethod, String resource, String httpVersion, int httpStatus, int bytesTransferred) {
-        this.client = client;
-        this.timestamp = timestamp;
-        this.httpMethod = httpMethod;
-        this.resource = resource;
-        this.httpVersion = httpVersion;
-        this.httpStatus = httpStatus;
-        this.bytesTransferred = bytesTransferred;
-    }
-
-    public String client;
+    public String client = "";
     public DateTime timestamp;
-    public String httpMethod;
-    public String resource;
-    public String httpVersion;
+    public String httpMethod = "";
+    public String resource = "";
+    public String httpVersion = "";
     public int httpStatus;
     public int bytesTransferred;
 
@@ -51,38 +41,29 @@ public class LogEntry {
     }
 
     public static LogEntry fromString(String line) {
-        String regex = "(?<client>.*)\\s-\\s-\\s\\[(?<timestamp>.+)\\]\\s\"(?<httpMethod>.+)\\s(?<resource>.+)\\s(?<httpVersion>.+)\"\\s(?<httpStatus>\\d{3})\\s(?<bytesTransferred>\\d+)";
+        String regex = "(?<client>.*)\\s-\\s-\\s\\[(?<timestamp>.+)\\]\\s\"(?<httpMethod>.+)\\s(?<resource>.+)\\s?(?<httpVersion>HTTP/1.0)?\"\\s(?<httpStatus>\\d{3})\\s(?<bytesTransferred>\\d+)?";
         Pattern pattern = Pattern.compile(regex);
 
         Matcher matcher = pattern.matcher(line);
-        if (!matcher.find() ||  matcher.groupCount() != 7) {
-            logger.warn("Invalid record: " + line);
-            return new LogEntry();
-        }
-
         LogEntry logEntry = new LogEntry();
-
-        try {
-            logEntry.timestamp = DateTime.parse(matcher.group("timestamp"), timeFormatter);
-            logEntry.client = matcher.group("client");
-            logEntry.httpMethod = matcher.group("httpMethod");
-            logEntry.resource = matcher.group("resource");
-            logEntry.httpVersion = matcher.group("httpVersion");
-            logEntry.httpStatus = Integer.parseInt(matcher.group("httpStatus"));
-            logEntry.bytesTransferred = Integer.parseInt(matcher.group("bytesTransferred"));
-        } catch (NumberFormatException nfe) {
-            throw new RuntimeException("Invalid record: " + line, nfe);
+        if (!matcher.find()) {
+            logger.warn("Invalid record: " + line);
+            return null;
         }
+
+        logEntry.timestamp = DateTime.parse(matcher.group("timestamp"), timeFormatter);
+        logEntry.client = matcher.group("client");
+        logEntry.httpMethod = matcher.group("httpMethod");
+        logEntry.resource = matcher.group("resource");
+        logEntry.httpStatus = Integer.parseInt(matcher.group("httpStatus"));
+
+        if (matcher.group("httpVersion") != null)
+            logEntry.httpVersion = matcher.group("httpVersion");
+
+        if (matcher.group("bytesTransferred") != null)
+            logEntry.bytesTransferred = Integer.parseInt(matcher.group("bytesTransferred"));
 
         return logEntry;
-    }
-
-    // sort by timestamp,
-    public int compareTo(LogEntry other) {
-        if (other == null) {
-            return 1;
-        }
-        return Long.compare(this.getEventTime(), other.getEventTime());
     }
 
     @Override
@@ -96,9 +77,5 @@ public class LogEntry {
     @Override
     public int hashCode() {
         return (int) this.timestamp.getMillis();
-    }
-
-    public long getEventTime() {
-        return timestamp.getMillis();
     }
 }

@@ -46,3 +46,5 @@ piweba4y.prodigy.com - - [01/Aug/1995:00:00:47 -0400] "GET /images/KSC-logosmall
 uplherc.upl.com - - [01/Aug/1995:00:00:55 -0400] "GET /shuttle/resources/orbiters/atlantis.html HTTP/1.0" 200 7025
 uplherc.upl.com - - [01/Aug/1995:00:00:56 -0400] "GET /shuttle/resources/orbiters/atlantis-logo.gif HTTP/1.0" 200 4179
 www-c3.proxy.aol.com - - [01/Aug/1995:00:00:57 -0400] "GET /cgi-bin/imagemap/countdown70?285,291 HTTP/1.0" 302 85
+www-c3.proxy.aol.com - - [01/Aug/1995:00:00:57 -0400] "GET /cgi-bin/imagemap/countdown70?285,291 HTTP/1.0" 404 -
+www-c3.proxy.aol.com - - [01/Aug/1995:00:00:57 -0400] "GET /cgi-bin/imagemap/countdown70?285,291" 404 -
