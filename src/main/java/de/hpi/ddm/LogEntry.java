@@ -41,7 +41,7 @@ public class LogEntry {
     }
 
     public static LogEntry fromString(String line) {
-        String regex = "(?<client>.*)\\s-\\s-\\s\\[(?<timestamp>.+)\\]\\s\"(?<httpMethod>.+)\\s(?<resource>.+)\\s?(?<httpVersion>HTTP/1.0)?\"\\s(?<httpStatus>\\d{3})\\s(?<bytesTransferred>\\d+)?";
+        String regex = "(?<client>.*)\\s-\\s-\\s\\[(?<timestamp>.+)\\]\\s\"(?<httpMethod>\\w+)\\s(?<resource>\\S+)(\\s)?(?<httpVersion>.*)?\"\\s(?<httpStatus>\\d{3})\\s(?<bytesTransferred>\\d+)?";
         Pattern pattern = Pattern.compile(regex);
 
         Matcher matcher = pattern.matcher(line);
@@ -57,8 +57,12 @@ public class LogEntry {
         logEntry.resource = matcher.group("resource");
         logEntry.httpStatus = Integer.parseInt(matcher.group("httpStatus"));
 
-        if (matcher.group("httpVersion") != null)
-            logEntry.httpVersion = matcher.group("httpVersion");
+        try {
+            if (matcher.group("httpVersion") != null)
+                logEntry.httpVersion = matcher.group("httpVersion");
+        } catch (IllegalArgumentException e) {
+            logger.warn(line);
+        }
 
         if (matcher.group("bytesTransferred") != null)
             logEntry.bytesTransferred = Integer.parseInt(matcher.group("bytesTransferred"));

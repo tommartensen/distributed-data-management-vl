@@ -1,5 +1,7 @@
 package de.hpi.ddm;
 
+import org.apache.flink.api.common.functions.FlatMapFunction;
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.streaming.api.TimeCharacteristic;
@@ -12,8 +14,6 @@ import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
-
-import java.util.function.LongBinaryOperator;
 
 
 public class FlinkAssignment {
@@ -41,18 +41,30 @@ public class FlinkAssignment {
             }
         });
 
+		// Client that requested the most byte resources per day
 		DataStream<Tuple3<Long, String, Long>> bytesPerMonthAndClient = logEntries
-				.keyBy((LogEntry e) -> e.client)
-				.timeWindow(Time.days(1)) // assuming that all months have 31 days
+				.keyBy(e -> e.client)
+				.timeWindow(Time.days(1))
 				.process(new AddBytes());
 
 		DataStream<Tuple3<Long, String, Long>> maxBytesPerDayAndClient = bytesPerMonthAndClient
-                .timeWindowAll(Time.days(1)) // assuming that all months have 31 days
+                .timeWindowAll(Time.days(1))
                 .maxBy(2);
 
         maxBytesPerDayAndClient.print("Client that requested the most byte resources per day (days in ms, client, transferred bytes) : ").setParallelism(1);
 
-		// execute program
+        // Most requested resource (total count)
+        SingleOutputStreamOperator<Tuple2<String, Integer>> mostRequestedResource = logEntries
+                .flatMap(new ResourceMapper())
+                .keyBy(0)
+                .timeWindow(Time.hours(10))
+                .sum(1)
+                .timeWindowAll(Time.hours(10))
+                .maxBy(1);
+
+        mostRequestedResource.print("Most requested resource within 10 hours (resource, accesses)").setParallelism(1);
+
+        // execute program
 		env.execute("Flink Assignment");
 	}
 
@@ -68,5 +80,11 @@ public class FlinkAssignment {
 		}
 	}
 
+    public static final class ResourceMapper implements FlatMapFunction<LogEntry, Tuple2<String, Integer>> {
 
+        @Override
+        public void flatMap(LogEntry value, Collector<Tuple2<String, Integer>> out) {
+            out.collect(new Tuple2<>(value.resource, 1));
+        }
+    }
 }
