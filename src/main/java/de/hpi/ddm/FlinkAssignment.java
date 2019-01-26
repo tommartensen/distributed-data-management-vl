@@ -10,11 +10,10 @@ import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.streaming.api.functions.timestamps.BoundedOutOfOrdernessTimestampExtractor;
+import org.apache.flink.streaming.api.functions.windowing.ProcessAllWindowFunction;
 import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
-import org.apache.flink.streaming.api.functions.windowing.WindowFunction;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
-import org.apache.flink.streaming.api.windowing.windows.Window;
 import org.apache.flink.util.Collector;
 
 
@@ -46,18 +45,16 @@ public class FlinkAssignment {
 
 		// Client that requested the most byte resources per day
 
-		DataStream<Tuple3<Long, String, Long>> bytesPerMonthAndClient = logEntries
+		DataStream<Tuple3<Long, String, Long>> maxBytesPerDayAndClient = logEntries
 				.keyBy(e -> e.client)
 				.timeWindow(Time.days(1))
-				.process(new AddBytes());
-
-		DataStream<Tuple3<Long, String, Long>> maxBytesPerDayAndClient = bytesPerMonthAndClient
-                .timeWindowAll(Time.days(1))
+				.process(new AddBytes())
+				.timeWindowAll(Time.days(1))
                 .maxBy(2);
 
-        //maxBytesPerDayAndClient.print("Client that requested the most byte resources per day (days in ms, client, transferred bytes) : ").setParallelism(1);
+        maxBytesPerDayAndClient.print("Client that requested the most byte resources per day (days in ms, client, transferred bytes) : ").setParallelism(1);
 
-        // Most requested resource (total count)
+        // Most requested resource (total sum)
 		SingleOutputStreamOperator<Tuple2<String, Integer>> mostRequestedResource = logEntries
                 .flatMap(new ResourceMapper())
                 .keyBy(0)
@@ -69,23 +66,31 @@ public class FlinkAssignment {
         mostRequestedResource.print("Most requested resource within 10 hours (resource, accesses)").setParallelism(1);
 
 
-		SingleOutputStreamOperator<Tuple3<Long, String, Float>> avg = logEntries
+		SingleOutputStreamOperator<Tuple2<Long, Float>> avg = logEntries
 				.filter(e -> e.httpStatus == 200)
 				.filter(e -> e.httpMethod.equals("GET"))
 				.keyBy(e -> e.httpMethod)
 				.timeWindow(Time.hours(1))
-				.process(new MyProcessWindowFunction());
+				.process(new ProcessBytesTransferred());
 
-				avg.print("Average number of transferred bytes per hour for GET requests with 200 : ").setParallelism(1);
+		avg.print("Average number of transferred bytes per hour for GET requests with 200 -> mean, not median! ;): ").setParallelism(1);
+
+		logEntries
+				.timeWindowAll(Time.hours(1))
+				.process(new CountRequestsPerWindow())
+				.timeWindowAll(Time.days(1))
+				.process(new AverageRequestsPerDay())
+				.print("Average requests per hour (day, average) : ")
+				.setParallelism(1);
 
         // execute program
 		env.execute("Flink Assignment");
 	}
 
-	public static class MyProcessWindowFunction extends ProcessWindowFunction<LogEntry, Tuple3<Long, String, Float>, String, TimeWindow> {
+	public static class ProcessBytesTransferred extends ProcessWindowFunction<LogEntry, Tuple2<Long, Float>, String, TimeWindow> {
 
 		@Override
-		public void process(String key, Context context, Iterable<LogEntry> logEntries, Collector<Tuple3<Long, String, Float>> out) {
+		public void process(String key, Context context, Iterable<LogEntry> logEntries, Collector<Tuple2<Long, Float>> out) {
 			float sum = 0f;
 			float count = 0f;
 
@@ -94,9 +99,41 @@ public class FlinkAssignment {
 				count++;
 			}
 
-			out.collect(new Tuple3<>(context.window().getEnd(), key, (sum / count)));
+			out.collect(new Tuple2<>(context.window().getEnd(), (sum / count)));
 		}
 	}
+
+	public static class CountRequestsPerWindow extends ProcessAllWindowFunction<LogEntry, Long, TimeWindow> {
+
+		@Override
+		public void process(Context context, Iterable<LogEntry> logEntries, Collector<Long> out) {
+			long count = 0;
+
+			for (LogEntry e : logEntries) {
+				count++;
+			}
+
+			out.collect(count);
+		}
+	}
+
+	public static class AverageRequestsPerDay extends ProcessAllWindowFunction<Long, Tuple2<Long, Long>, TimeWindow> {
+
+		@Override
+		public void process(Context context, Iterable<Long> preResults, Collector<Tuple2<Long, Long>> out) {
+			long count = 0;
+			long sum = 0;
+
+			for (Long r : preResults) {
+				count++;
+				sum += r;
+			}
+
+			out.collect(new Tuple2<>(context.window().getEnd(), sum / count));
+		}
+	}
+
+
 
 	public static class AddBytes extends ProcessWindowFunction<LogEntry, Tuple3<Long, String, Long>, String, TimeWindow> {
 		@Override
@@ -111,11 +148,9 @@ public class FlinkAssignment {
 	}
 
     public static final class ResourceMapper implements FlatMapFunction<LogEntry, Tuple2<String, Integer>> {
-
         @Override
         public void flatMap(LogEntry value, Collector<Tuple2<String, Integer>> out) {
             out.collect(new Tuple2<>(value.resource, 1));
         }
     }
-
 }
