@@ -63,31 +63,31 @@ public class FlinkAssignment {
                 .timeWindowAll(Time.hours(10))
                 .maxBy(1);
 
-        mostRequestedResource.print("Most requested resource within 10 hours (resource, accesses)").setParallelism(1);
+        mostRequestedResource.print("Most requested resource within 10 hours (resource, accesses)");
 
 
+		// Average number of transferred byter per hour for successful GET requests
 		SingleOutputStreamOperator<Tuple2<Long, Float>> avg = logEntries
-				.filter(e -> e.httpStatus == 200)
-				.filter(e -> e.httpMethod.equals("GET"))
+				.filter(e -> e.httpStatus == 200 && e.httpMethod.equals("GET"))
 				.keyBy(e -> e.httpMethod)
 				.timeWindow(Time.hours(1))
-				.process(new ProcessBytesTransferred());
+				.process(new AverageBytesTransferred());
 
-		avg.print("Average number of transferred bytes per hour for GET requests with 200 -> mean, not median! ;): ").setParallelism(1);
+		avg.print("Average number of transferred bytes per hour for GET requests with 200 -> mean, not median! ;): ");
 
+		// Average no. requests per hour
 		logEntries
 				.timeWindowAll(Time.hours(1))
 				.process(new CountRequestsPerWindow())
 				.timeWindowAll(Time.days(1))
 				.process(new AverageRequestsPerDay())
-				.print("Average requests per hour (day, average) : ")
-				.setParallelism(1);
+				.print("Average requests per hour (day, average) : ");
 
         // execute program
 		env.execute("Flink Assignment");
 	}
 
-	public static class ProcessBytesTransferred extends ProcessWindowFunction<LogEntry, Tuple2<Long, Float>, String, TimeWindow> {
+	public static class AverageBytesTransferred extends ProcessWindowFunction<LogEntry, Tuple2<Long, Float>, String, TimeWindow> {
 
 		@Override
 		public void process(String key, Context context, Iterable<LogEntry> logEntries, Collector<Tuple2<Long, Float>> out) {
