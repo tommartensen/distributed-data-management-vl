@@ -52,7 +52,7 @@ public class FlinkAssignment {
 				.timeWindowAll(Time.days(1))
                 .maxBy(2);
 
-        maxBytesPerDayAndClient.print("Client that requested the most byte resources per day (days in ms, client, transferred bytes) : ").setParallelism(1);
+        maxBytesPerDayAndClient.print("Client that requested the most byte resources per day (days in ms, client, transferred bytes) : ");
 
         // Most requested resource (total sum)
 		SingleOutputStreamOperator<Tuple2<String, Integer>> mostRequestedResource = logEntries
